@@ -6,7 +6,7 @@
 
     <packaging>jar</packaging>
 
-    <groupId>io.github.lzpeng</groupId>
+    <groupId>io.github.lzpeng723</groupId>
     <artifactId>dynamic-compiler</artifactId>
     <version>1.0.0-M1</version>
     <name>dynamic-compiler</name>
@@ -19,7 +19,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <Automatic-Module-Name>io.github.lzpeng</Automatic-Module-Name>
+        <Automatic-Module-Name>io.github.lzpeng723</Automatic-Module-Name>
 
         <!-- versions -->
         <maven.compiler.source>17</maven.compiler.source>

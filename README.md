@@ -31,7 +31,7 @@ JDK 17 及以上版本
 ```xml
 
 <dependency>
-    <groupId>io.github.lzpeng</groupId>
+  <groupId>io.github.lzpeng723</groupId>
     <artifactId>dynamic-compiler</artifactId>
     <version>1.0.0-M1</version>
 </dependency>
@@ -40,7 +40,7 @@ JDK 17 及以上版本
 ## Gradle 依赖
 
 ```groovy
-implementation 'io.github.lzpeng:dynamic-compiler:1.0.0-M1'
+implementation 'io.github.lzpeng723:dynamic-compiler:1.0.0-M1'
 ```
 
 # 一、编译 Java 源码（基础无依赖场景）
