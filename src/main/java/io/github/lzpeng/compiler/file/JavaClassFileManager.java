@@ -3,6 +3,7 @@ package io.github.lzpeng.compiler.file;
 import io.github.lzpeng.compiler.CharPool;
 import io.github.lzpeng.compiler.classloader.ResourceClassLoader;
 import io.github.lzpeng.compiler.resource.FileObjectResource;
+import io.github.lzpeng.compiler.resource.Resource;
 import io.github.lzpeng.compiler.util.UrlUtil;
 
 import javax.tools.*;
@@ -28,7 +29,7 @@ public final class JavaClassFileManager extends ForwardingJavaFileManager<JavaFi
     /**
      * 存储java字节码文件对象映射
      */
-    private final Map<String, FileObjectResource> classFileObjectMap = new HashMap<>();
+    private final Map<String, Resource> classFileObjectMap = new HashMap<>();
 
     /**
      * 加载动态编译生成类的父类加载器
@@ -72,10 +73,19 @@ public final class JavaClassFileManager extends ForwardingJavaFileManager<JavaFi
      */
     @Override
     public JavaFileObject getJavaFileForOutput(final Location location, final String className, final Kind kind, final FileObject sibling) throws IOException {
-        if (StandardLocation.CLASS_OUTPUT.equals(location)) {
-            final JavaFileObject javaFileObject = new JavaClassFileObject(className);
-            this.classFileObjectMap.put(className, new FileObjectResource(javaFileObject));
-            return javaFileObject;
+        if (StandardLocation.CLASS_OUTPUT.equals(location) && Kind.CLASS.equals(kind)) {
+            final StandardJavaFileManager standardJavaFileManager = (StandardJavaFileManager) this.fileManager;
+            final Iterable<? extends File> classOutputFileIter = standardJavaFileManager.getLocation(StandardLocation.CLASS_OUTPUT);
+            // Creates and returns JavaFileObject; updates classFileObjectMap
+            if (classOutputFileIter != null && classOutputFileIter.iterator().hasNext()) {
+                final JavaFileObject javaFileObject = super.getJavaFileForOutput(location, className, kind, sibling);
+                this.classFileObjectMap.put(className, new FileObjectResource(javaFileObject));
+                return javaFileObject;
+            } else {
+                final JavaFileObject javaFileObject = new JavaClassFileObject(className);
+                this.classFileObjectMap.put(className, new FileObjectResource(javaFileObject));
+                return javaFileObject;
+            }
         }
         return super.getJavaFileForOutput(location, className, kind, sibling);
     }

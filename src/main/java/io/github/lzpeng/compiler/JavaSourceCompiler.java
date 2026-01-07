@@ -23,23 +23,6 @@ import java.util.stream.StreamSupport;
 
 /**
  * Java 源码编译器
- * <p>通过此类可以动态编译java源码，并加载到ClassLoader，从而动态获取加载的类。</p>
- * <p>JavaSourceCompiler支持加载的源码类型包括：</p>
- * <ul>
- *     <li>源码文件</li>
- *     <li>源码文件源码字符串</li>
- * </ul>
- *
- * <p>使用方法如下：</p>
- * <pre>
- *     ClassLoader classLoader = JavaSourceCompiler.create(null)
- *         .addSource(FileUtil.path("test-compile/b/B.java"))
- *         .addSource("c.C", FileUtil.readUtf8String("test-compile/c/C.java"))
- *         // 增加编译依赖的类库
- *         .addLibrary(libFile)
- *         .compile();
- *     Class&lt;?&gt; clazz = classLoader.loadClass("c.C");
- * </pre>
  *
  * @author lzpeng
  */
@@ -49,14 +32,14 @@ public final class JavaSourceCompiler {
      * 系统默认的Java编译器实例。通过ToolProvider.getSystemJavaCompiler()方法获取，用于执行Java源代码的编译任务。
      * 该变量为静态常量，确保在类加载时初始化，并且在整个应用程序生命周期中保持不变。
      */
-    private static final JavaCompiler SYSTEM_COMPILER = ToolProvider.getSystemJavaCompiler();
+    private final JavaCompiler SYSTEM_COMPILER = ToolProvider.getSystemJavaCompiler();
 
 
     /**
      * 标准Java文件管理器实例，用于管理和访问编译过程中所需的源代码和类文件。
      * 该实例通过系统编译器获取，并配置为不使用任何特定的诊断监听器或位置。
      */
-    private static final StandardJavaFileManager STANDARD_FILE_MANAGER = SYSTEM_COMPILER.getStandardFileManager(null, null, null);
+    private final StandardJavaFileManager STANDARD_FILE_MANAGER = SYSTEM_COMPILER.getStandardFileManager(null, null, null);
 
     /**
      * 待编译的资源，支持：
@@ -116,7 +99,7 @@ public final class JavaSourceCompiler {
      * @return 包含所有Java文件对象的迭代器
      * @throws RuntimeException 如果在遍历路径或获取文件对象时发生IO异常
      */
-    private static Iterable<? extends JavaFileObject> getJavaFileObjectsFromFile(File file) {
+    private Iterable<? extends JavaFileObject> getJavaFileObjectsFromFile(File file) {
         return getJavaFileObjectsFromPath(file.toPath());
     }
 
@@ -127,7 +110,7 @@ public final class JavaSourceCompiler {
      * @return 包含所有Java文件对象的迭代器
      * @throws RuntimeException 如果在遍历路径或获取文件对象时发生IO异常
      */
-    private static Iterable<? extends JavaFileObject> getJavaFileObjectsFromPath(Path path) {
+    private Iterable<? extends JavaFileObject> getJavaFileObjectsFromPath(Path path) {
         try {
             final File[] files = Files.walk(path).map(Path::toFile).filter(file -> file.isFile() && file.getName().endsWith(JavaFileObject.Kind.SOURCE.extension)).toArray(File[]::new);
             return STANDARD_FILE_MANAGER.getJavaFileObjects(files);
@@ -412,7 +395,7 @@ public final class JavaSourceCompiler {
      * @param options 编译参数
      * @return 类加载器
      */
-    public ClassLoader compile(List<String> options) {
+    public ClassLoader compile(Iterable<String> options) {
         if (sourceList.isEmpty() && this.locationMap.isEmpty()) {
             // 没有需要编译的源码文件返回加载zip或jar包的类加载器
             return this.parentClassLoader;

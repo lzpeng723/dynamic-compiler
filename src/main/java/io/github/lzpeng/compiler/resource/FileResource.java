@@ -20,4 +20,14 @@ public class FileResource extends URIResource {
         super(file.getName(), file.toURI());
     }
 
+
+    /**
+     * 构造一个新的FileResource实例，用于表示给定文件路径的资源。
+     *
+     * @param filePath 用于创建资源的文件路径
+     */
+    public FileResource(String filePath) {
+        this(new File(filePath));
+    }
+
 }
