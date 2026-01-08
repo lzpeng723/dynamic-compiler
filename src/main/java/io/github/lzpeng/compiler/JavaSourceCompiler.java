@@ -381,6 +381,63 @@ public final class JavaSourceCompiler {
     }
 
     /**
+     * 从编译器中移除类路径。
+     *
+     * @return 当前Java源码编译器实例，用于链式调用
+     */
+    public JavaSourceCompiler removeClassPath() {
+        return this.removeLocation(StandardLocation.CLASS_PATH);
+    }
+
+    /**
+     * 从编译器中移除注解处理器路径。
+     *
+     * @return 当前Java源码编译器实例，用于链式调用
+     */
+    public JavaSourceCompiler removeProcessor() {
+        return this.removeLocation(StandardLocation.ANNOTATION_PROCESSOR_PATH);
+    }
+
+    /**
+     * 从编译器中移除类输出位置。
+     *
+     * @return 当前Java源码编译器实例，用于链式调用
+     */
+    public JavaSourceCompiler removeClassOutput() {
+        return this.removeLocation(StandardLocation.CLASS_OUTPUT);
+    }
+
+    /**
+     * 从编译器中移除源输出位置。
+     *
+     * @return 当前Java源码编译器实例，用于链式调用
+     */
+    public JavaSourceCompiler removeSourceOutput() {
+        return this.removeLocation(StandardLocation.SOURCE_OUTPUT);
+    }
+
+    /**
+     * 从编译器中移除指定的Java文件管理器位置。
+     *
+     * @param location 要移除的位置
+     * @return 当前Java源码编译器实例，用于链式调用
+     */
+    public JavaSourceCompiler removeLocation(JavaFileManager.Location location) {
+        this.locationMap.remove(location);
+        return this;
+    }
+
+    /**
+     * 清除编译器中的所有位置映射。
+     *
+     * @return 当前Java源码编译器实例，用于链式调用
+     */
+    public JavaSourceCompiler clear() {
+        this.locationMap.clear();
+        return this;
+    }
+
+    /**
      * 编译所有文件并返回类加载器
      *
      * @return 类加载器
@@ -412,7 +469,11 @@ public final class JavaSourceCompiler {
             // 设置编译时候用到的路径
             this.locationMap.forEach((location, urls) -> {
                 try {
-                    STANDARD_FILE_MANAGER.setLocation(location, urls.stream().map(UrlUtil::toFile).collect(Collectors.toList()));
+                    if (urls != null) {
+                        STANDARD_FILE_MANAGER.setLocation(location, urls.stream().map(UrlUtil::toFile).collect(Collectors.toList()));
+                    } else {
+                        STANDARD_FILE_MANAGER.setLocation(location, null);
+                    }
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }

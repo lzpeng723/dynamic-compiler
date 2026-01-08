@@ -6,7 +6,10 @@ import io.github.lzpeng.compiler.resource.Resource;
 import javax.tools.JavaFileObject;
 import java.io.IOException;
 import java.net.URL;
+import java.security.CodeSource;
+import java.security.ProtectionDomain;
 import java.security.SecureClassLoader;
+import java.security.cert.Certificate;
 import java.util.*;
 
 /**
@@ -122,7 +125,13 @@ public final class ResourceClassLoader<T extends Resource> extends SecureClassLo
         final Resource resource = resourceMap.get(name);
         if (null != resource) {
             final byte[] bytes = resource.readBytes();
-            return defineClass(name, bytes, 0, bytes.length);
+            resource.getUri();
+            try {
+                final ProtectionDomain protectionDomain = new ProtectionDomain(new CodeSource(resource.getUrl(), (Certificate[]) null), null, this, null);
+                return defineClass(name, bytes, 0, bytes.length, protectionDomain);
+            } catch (Throwable t) {
+                return defineClass(name, bytes, 0, bytes.length);
+            }
         }
         return null;
     }
