@@ -1,4 +1,6 @@
-# dynamic-compiler - Java 动态编译工具封装
+# dynamic-compiler
+
+# Java 动态编译工具k
 
 轻量、易用的 Java 动态编译工具，基于 JDK 原生 JavaCompiler 封装，让 Java 拥有便捷的动态脚本执行能力
 
@@ -183,7 +185,7 @@ void testCompileFile() throws Exception {
 void testCompileDirectory() throws Exception {
     final ClassLoader classLoader = JavaSourceCompiler.create()
             .addSourceDirectory(new ClassPathResource("test-compile").getFile())
-            .addProcessor(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
+            .addProcessorPath(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
             .compile();
     final Class<?> clazz = classLoader.loadClass("C");
     final Object c = clazz.getConstructor().newInstance();
@@ -366,11 +368,11 @@ void testCompileWithClassLoader() throws Exception {
 
 ## 1. 核心 API 说明
 
-- 注解处理器添加：addProcessor 相关方法
-    - JavaSourceCompiler addProcessor(boolean, java.io.File...)：通过文件添加注解处理器
-    - JavaSourceCompiler addProcessor(boolean, URL...)：通过URL添加注解处理器
-    - JavaSourceCompiler addProcessor(boolean, String...)：通过url字符串添加注解处理器
-- 指定注解处理器参数：compiler.addProcessorOption("key", "value")（如指定 APT 生成代码的输出目录）
+- 注解处理器添加：addProcessorPath 相关方法
+  - JavaSourceCompiler addProcessorPath(boolean, java.io.File...)：通过文件添加注解处理器
+  - JavaSourceCompiler addProcessorPath(boolean, URL...)：通过URL添加注解处理器
+  - JavaSourceCompiler addProcessorPath(boolean, String...)：通过url字符串添加注解处理器
+- 指定注解处理器参数：compiler.addProcessorPathOption("key", "value")（如指定 APT 生成代码的输出目录）
 - 核心特性：自动识别注解处理器的 javax.annotation.processing.Processor 实现，无需手动配置 processor 编译参数
 
 ## 2. 代码示例
@@ -418,11 +420,66 @@ void testCompileWithApt() throws Exception {
             """;
     final ClassLoader classLoader = JavaSourceCompiler.create()
             .addSource(className, sourceCode)
-            .addProcessor(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
+            .addProcessorPath(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
             .compile();
-    final Class<?> clazz = classLoader.loadClass(className);
-    final Method helloMethod = clazz.getDeclaredMethod("hello");
-    helloMethod.invoke(null);
+  final Class<?> clazz = classLoader.loadClass(className);
+  final Method helloMethod = clazz.getDeclaredMethod("hello");
+  helloMethod.invoke(null);
+}
+```
+
+### 2.2 指定编译的class文件输出路径
+
+```java
+/**
+ * 测试编译包含 Lombok 注解的 Java 源代码并验证其执行结果。
+ * 该方法执行以下步骤：
+ * - 定义一个包含 Lombok 注解（如 @Data 和 @Builder）的 Java 类源代码。
+ * - 使用 {@link JavaSourceCompiler} 创建一个编译器实例，并添加上述定义的源代码进行编译。同时指定从 Maven 中央仓库下载 Lombok 库作为注解处理器。
+ * - 设置类输出目录为 "target/compile-classes" 并确保该目录存在。
+ * - 编译完成后，通过生成的类加载器加载编译后的类。
+ * - 反射调用加载类中的静态方法，确保 Lombok 注解能够被正确处理且输出预期结果。
+ *
+ * @throws Exception 如果在编译、类加载或方法调用过程中发生异常
+ */
+@Test
+void testCompileCodeAndSetClassOutput() throws Exception {
+  final String className = "test.HelloWorld";
+  final String sourceCode = """
+          package test;
+          
+          import lombok.Builder;
+          import lombok.Data;
+          
+          public class HelloWorld {
+              public static void hello(){
+          		JavaBean javaBean = JavaBean.builder()
+          			.name("lzpeng723")
+          			.age(18)
+          			.address("地球")
+          			.build();
+                  System.out.println(javaBean);
+              }
+          }
+          
+          @Data
+          @Builder
+          class JavaBean {
+          	private String name;
+          	private int age;
+          	private String address;
+          }
+          """;
+  final File compileClasses = new File("target/compile-classes");
+  compileClasses.mkdirs();
+  final ClassLoader classLoader = JavaSourceCompiler.create()
+          .addSource(className, sourceCode)
+          .addProcessorPath(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
+          .setClassOutput(compileClasses)
+          .compile();
+  final Class<?> clazz = classLoader.loadClass(className);
+  final Method helloMethod = clazz.getDeclaredMethod("hello");
+  helloMethod.invoke(null);
 }
 ```
 

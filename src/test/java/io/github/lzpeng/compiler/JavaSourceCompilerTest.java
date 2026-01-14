@@ -116,7 +116,7 @@ class JavaSourceCompilerTest {
                 """;
         final ClassLoader classLoader = JavaSourceCompiler.create()
                 .addSource(className, sourceCode)
-                .addDependency("https://repo1.maven.org/maven2/cn/hutool/hutool-all/5.8.43/hutool-all-5.8.43.jar")
+                .addDependencyPath("https://repo1.maven.org/maven2/cn/hutool/hutool-all/5.8.43/hutool-all-5.8.43.jar")
                 .compile();
         final Class<?> clazz = classLoader.loadClass(className);
         final Method helloMethod = clazz.getDeclaredMethod("hello");
@@ -164,7 +164,7 @@ class JavaSourceCompilerTest {
                 """;
         final ClassLoader classLoader = JavaSourceCompiler.create()
                 .addSource(className, sourceCode)
-                .addProcessor(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
+                .addProcessorPath(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
                 .compile();
         final Class<?> clazz = classLoader.loadClass(className);
         final Method helloMethod = clazz.getDeclaredMethod("hello");
@@ -214,7 +214,7 @@ class JavaSourceCompilerTest {
         compileClasses.mkdirs();
         final ClassLoader classLoader = JavaSourceCompiler.create()
                 .addSource(className, sourceCode)
-                .addProcessor(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
+                .addProcessorPath(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
                 .setClassOutput(compileClasses)
                 .compile();
         final Class<?> clazz = classLoader.loadClass(className);
@@ -262,7 +262,7 @@ class JavaSourceCompilerTest {
     void testCompileDirectory() throws Exception {
         final ClassLoader classLoader = JavaSourceCompiler.create()
                 .addSourceDirectory(new ClassPathResource("test-compile").getFile())
-                .addProcessor(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
+                .addProcessorPath(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
                 .compile();
         final Class<?> clazz = classLoader.loadClass("C");
         final Object c = clazz.getConstructor().newInstance();
@@ -331,6 +331,63 @@ class JavaSourceCompilerTest {
                 """;
         final ClassLoader classLoader = JavaSourceCompiler.create()
                 .addSource(className, sourceCode)
+                .compile();
+        final Class<?> clazz = classLoader.loadClass(className);
+        final Method helloMethod = clazz.getDeclaredMethod("hello");
+        helloMethod.invoke(null);
+    }
+
+    /**
+     * 测试编译包含外部依赖的 Java 源代码并验证其执行结果。
+     * 该方法执行以下步骤：
+     * - 定义一个简单的 Java 类源代码，其中导入了外部库 `cn.hutool.system.SystemUtil` 并使用它来打印系统信息。
+     * - 使用 {@link JavaSourceCompiler} 创建一个编译器实例，并添加上述定义的源代码进行编译。同时指定需要从 Maven 中央仓库下载的 hutool 库作为编译时依赖。
+     * - 编译完成后，通过生成的类加载器加载编译后的类。
+     * - 反射调用加载类中的静态方法，确保方法能够正确执行且输出预期结果。
+     *
+     * @throws Exception 如果在编译、类加载或方法调用过程中发生异常
+     */
+    @Test
+    void testCompileWithProcessor() throws Exception {
+        final String className = "test.HelloWorld";
+        final String sourceCode = """
+                package test;
+                
+                import java.lang.annotation.ElementType;
+                import java.lang.annotation.Retention;
+                import java.lang.annotation.RetentionPolicy;
+                import java.lang.annotation.Target;
+                
+                public class HelloWorld {
+                
+                    public static void hello(){
+                        System.out.println(new JavaBeanAudit());
+                    }
+                
+                }
+                
+                @WithAudit
+                class JavaBean {
+                	private String name;
+                	private int age;
+                	private String address;
+                }
+                
+                /**
+                 * 标注该注解的JavaBean会自动添加审计字段和完整的toString()方法
+                 * 日期类型使用JDK8原生的java.time.LocalDate（仅日期，无时间）
+                 */
+                @Target(ElementType.TYPE)
+                @Retention(RetentionPolicy.SOURCE)
+                @interface WithAudit {
+                }
+                """;
+        final File compileSources = new File("target/compile-sources");
+        compileSources.mkdirs();
+        final ClassLoader classLoader = JavaSourceCompiler.create()
+                .addSource(className, sourceCode)
+                .addProcessor(new AuditProcessor())
+                .setSourceOutput(compileSources)
                 .compile();
         final Class<?> clazz = classLoader.loadClass(className);
         final Method helloMethod = clazz.getDeclaredMethod("hello");

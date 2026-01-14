@@ -8,6 +8,7 @@ import io.github.lzpeng.compiler.resource.Resource;
 import io.github.lzpeng.compiler.resource.StringResource;
 import io.github.lzpeng.compiler.util.UrlUtil;
 
+import javax.annotation.processing.Processor;
 import javax.tools.*;
 import javax.tools.JavaCompiler.CompilationTask;
 import java.io.File;
@@ -32,14 +33,14 @@ public final class JavaSourceCompiler {
      * 系统默认的Java编译器实例。通过ToolProvider.getSystemJavaCompiler()方法获取，用于执行Java源代码的编译任务。
      * 该变量为静态常量，确保在类加载时初始化，并且在整个应用程序生命周期中保持不变。
      */
-    private final JavaCompiler SYSTEM_COMPILER = ToolProvider.getSystemJavaCompiler();
+    private final JavaCompiler systemCompiler = ToolProvider.getSystemJavaCompiler();
 
 
     /**
      * 标准Java文件管理器实例，用于管理和访问编译过程中所需的源代码和类文件。
      * 该实例通过系统编译器获取，并配置为不使用任何特定的诊断监听器或位置。
      */
-    private final StandardJavaFileManager STANDARD_FILE_MANAGER = SYSTEM_COMPILER.getStandardFileManager(null, null, null);
+    private final StandardJavaFileManager standardFileManager = this.systemCompiler.getStandardFileManager(null, null, null);
 
     /**
      * 待编译的资源，支持：
@@ -51,6 +52,17 @@ public final class JavaSourceCompiler {
      * 可以是 .java文件 压缩文件 文件夹 递归搜索文件夹内的zip包和jar包
      */
     private final List<Resource> sourceList = new ArrayList<>();
+
+
+    /**
+     * 存储编译过程中使用的处理器列表。这些处理器可以用于处理注解、生成额外的源代码等。
+     * 该列表支持添加多种类型的处理器，如文件、URL或直接指定的处理器对象。
+     * 处理器列表中的元素类型为{@link Processor}，代表了在编译Java源码时将要应用的各种处理器。
+     * <p>
+     * 通过调用相关方法可以向此列表中添加新的处理器，从而扩展编译器的功能。
+     * 注意，对于需要特定类路径访问的处理器，可能还需要使用其他方法来配置类加载器或依赖项。
+     */
+    private final List<Processor> processorList = new ArrayList<>();
 
     /**
      * 用于存储与Java文件管理器位置相关的URL集合的映射。每个键是JavaFileManager.Location的一个实例，表示特定的文件管理器位置，而值是一个URL集合，这些URL指向该位置下的资源。
@@ -113,7 +125,7 @@ public final class JavaSourceCompiler {
     private Iterable<? extends JavaFileObject> getJavaFileObjectsFromPath(Path path) {
         try {
             final File[] files = Files.walk(path).map(Path::toFile).filter(file -> file.isFile() && file.getName().endsWith(JavaFileObject.Kind.SOURCE.extension)).toArray(File[]::new);
-            return STANDARD_FILE_MANAGER.getJavaFileObjects(files);
+            return this.standardFileManager.getJavaFileObjects(files);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -234,7 +246,7 @@ public final class JavaSourceCompiler {
      * @param files 编译Java源码时所需要的jar包
      * @return Java源码编译器
      */
-    public JavaSourceCompiler addDependency(File... files) {
+    public JavaSourceCompiler addDependencyPath(File... files) {
         this.addLocationUrl(StandardLocation.CLASS_PATH, files);
         return this;
     }
@@ -245,7 +257,7 @@ public final class JavaSourceCompiler {
      * @param dependencies 编译Java源码时所需要的jar包
      * @return Java源码编译器
      */
-    public JavaSourceCompiler addDependency(String... dependencies) {
+    public JavaSourceCompiler addDependencyPath(String... dependencies) {
         this.addLocationUrl(StandardLocation.CLASS_PATH, dependencies);
         return this;
     }
@@ -256,7 +268,7 @@ public final class JavaSourceCompiler {
      * @param urls 编译Java源码时所需要的jar包
      * @return Java源码编译器
      */
-    public JavaSourceCompiler addDependency(URL... urls) {
+    public JavaSourceCompiler addDependencyPath(URL... urls) {
         this.addLocationUrl(StandardLocation.CLASS_PATH, urls);
         return this;
     }
@@ -267,8 +279,8 @@ public final class JavaSourceCompiler {
      * @param files 待添加的处理器文件数组
      * @return 当前Java源码编译器实例，用于链式调用
      */
-    public JavaSourceCompiler addProcessor(File... files) {
-        addProcessor(false, files);
+    public JavaSourceCompiler addProcessorPath(File... files) {
+        addProcessorPath(false, files);
         return this;
     }
 
@@ -279,10 +291,10 @@ public final class JavaSourceCompiler {
      * @param files         待添加的处理器文件数组
      * @return 当前Java源码编译器实例，用于链式调用
      */
-    public JavaSourceCompiler addProcessor(boolean addDependency, File... files) {
+    public JavaSourceCompiler addProcessorPath(boolean addDependency, File... files) {
         this.addLocationUrl(StandardLocation.ANNOTATION_PROCESSOR_PATH, files);
         if (addDependency) {
-            this.addDependency(files);
+            this.addDependencyPath(files);
         }
         return this;
     }
@@ -293,8 +305,8 @@ public final class JavaSourceCompiler {
      * @param urlStrs 待添加的处理器文件数组
      * @return 当前Java源码编译器实例，用于链式调用
      */
-    public JavaSourceCompiler addProcessor(String... urlStrs) {
-        addProcessor(false, urlStrs);
+    public JavaSourceCompiler addProcessorPath(String... urlStrs) {
+        addProcessorPath(false, urlStrs);
         return this;
     }
 
@@ -305,10 +317,10 @@ public final class JavaSourceCompiler {
      * @param urlStrs       待添加的处理器文件数组
      * @return 当前Java源码编译器实例，用于链式调用
      */
-    public JavaSourceCompiler addProcessor(boolean addDependency, String... urlStrs) {
+    public JavaSourceCompiler addProcessorPath(boolean addDependency, String... urlStrs) {
         this.addLocationUrl(StandardLocation.ANNOTATION_PROCESSOR_PATH, urlStrs);
         if (addDependency) {
-            this.addDependency(urlStrs);
+            this.addDependencyPath(urlStrs);
         }
         return this;
     }
@@ -319,8 +331,8 @@ public final class JavaSourceCompiler {
      * @param urls 待添加的处理器文件数组
      * @return 当前Java源码编译器实例，用于链式调用
      */
-    public JavaSourceCompiler addProcessor(URL... urls) {
-        addProcessor(false, urls);
+    public JavaSourceCompiler addProcessorPath(URL... urls) {
+        addProcessorPath(false, urls);
         return this;
     }
 
@@ -331,10 +343,10 @@ public final class JavaSourceCompiler {
      * @param urls          待添加的处理器文件数组
      * @return 当前Java源码编译器实例，用于链式调用
      */
-    public JavaSourceCompiler addProcessor(boolean addDependency, URL... urls) {
+    public JavaSourceCompiler addProcessorPath(boolean addDependency, URL... urls) {
         this.addLocationUrl(StandardLocation.ANNOTATION_PROCESSOR_PATH, urls);
         if (addDependency) {
-            this.addDependency(urls);
+            this.addDependencyPath(urls);
         }
         return this;
     }
@@ -377,6 +389,18 @@ public final class JavaSourceCompiler {
             final Collection<URL> locationUrlColl = this.locationMap.computeIfAbsent(location, __ -> new ArrayList<>());
             locationUrlColl.addAll(Arrays.asList(urls));
         }
+        return this;
+    }
+
+
+    /**
+     * 向编译器中添加注解处理器。
+     *
+     * @param processor 待添加的注解处理器
+     * @return 当前Java源码编译器实例，用于链式调用
+     */
+    public JavaSourceCompiler addProcessor(Processor processor) {
+        this.processorList.add(processor);
         return this;
     }
 
@@ -461,7 +485,7 @@ public final class JavaSourceCompiler {
         final Collection<URL> classPathColl = this.locationMap.getOrDefault(StandardLocation.CLASS_PATH, Collections.emptySet());
         final ClassLoader classLoader = classPathColl.isEmpty() ? this.parentClassLoader : URLClassLoader.newInstance(classPathColl.toArray(new URL[0]), this.parentClassLoader);
         // 创建编译器
-        try (final JavaClassFileManager javaFileManager = new JavaClassFileManager(classLoader, STANDARD_FILE_MANAGER)) {
+        try (final JavaClassFileManager javaFileManager = new JavaClassFileManager(classLoader, this.standardFileManager)) {
             // classpath
             if (null == options) {
                 options = new ArrayList<>();
@@ -470,9 +494,9 @@ public final class JavaSourceCompiler {
             this.locationMap.forEach((location, urls) -> {
                 try {
                     if (urls != null) {
-                        STANDARD_FILE_MANAGER.setLocation(location, urls.stream().map(UrlUtil::toFile).collect(Collectors.toList()));
+                        this.standardFileManager.setLocation(location, urls.stream().map(UrlUtil::toFile).collect(Collectors.toList()));
                     } else {
-                        STANDARD_FILE_MANAGER.setLocation(location, null);
+                        this.standardFileManager.setLocation(location, null);
                     }
                 } catch (IOException e) {
                     throw new RuntimeException(e);
@@ -481,8 +505,11 @@ public final class JavaSourceCompiler {
             // 编译文件
             final DiagnosticCollector<? super JavaFileObject> diagnosticCollector = new DiagnosticCollector<>();
             final List<JavaFileObject> javaFileObjectList = this.getJavaFileObjectList();
-            final CompilationTask task = SYSTEM_COMPILER.getTask(null, javaFileManager, diagnosticCollector, options, null, javaFileObjectList);
-            if (task.call()) {
+            final CompilationTask compilerTask = this.systemCompiler.getTask(null, javaFileManager, diagnosticCollector, options, null, javaFileObjectList);
+            if (!this.processorList.isEmpty()) {
+                compilerTask.setProcessors(this.processorList);
+            }
+            if (compilerTask.call()) {
                 // 加载编译后的类
                 return javaFileManager.getClassLoader(StandardLocation.CLASS_OUTPUT);
             }
@@ -502,7 +529,7 @@ public final class JavaSourceCompiler {
      */
     private List<JavaFileObject> getJavaFileObjectList() {
         final List<JavaFileObject> list = new ArrayList<>();
-        final Iterable<? extends File> sourceFileLocation = STANDARD_FILE_MANAGER.getLocation(StandardLocation.SOURCE_PATH);
+        final Iterable<? extends File> sourceFileLocation = this.standardFileManager.getLocation(StandardLocation.SOURCE_PATH);
         if (sourceFileLocation != null) {
             final Stream<? extends File> stream = StreamSupport.stream(sourceFileLocation.spliterator(), false);
             stream.forEach(file -> getJavaFileObjectsFromFile(file).forEach(list::add));

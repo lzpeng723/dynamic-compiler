@@ -8,7 +8,7 @@
 
     <groupId>io.github.lzpeng723</groupId>
     <artifactId>dynamic-compiler</artifactId>
-    <version>1.0.0-M1</version>
+    <version>1.0.0-M2</version>
     <name>dynamic-compiler</name>
     <description>
         dynamic-compiler
@@ -29,9 +29,37 @@
         <lombok.version>1.18.42</lombok.version>
         <kotlin-version>2.2.20</kotlin-version>
         <bouncycastle.version>1.82</bouncycastle.version>
+        <javapoet.version>1.13.0</javapoet.version>
+        <auto-service.version>1.1.1</auto-service.version>
+        <compile-testing.version>0.23.0</compile-testing.version>
     </properties>
 
     <dependencies>
+        <!-- 自动生成 Service API -->
+        <dependency>
+            <groupId>com.google.auto.service</groupId>
+            <artifactId>auto-service</artifactId>
+            <version>${auto-service.version}</version>
+            <scope>test</scope>
+            <optional>true</optional>
+        </dependency>
+        <!-- 编译测试  -->
+        <!-- https://github.com/google/compile-testing  -->
+        <dependency>
+            <groupId>com.google.testing.compile</groupId>
+            <artifactId>compile-testing</artifactId>
+            <version>${compile-testing.version}</version>
+            <scope>test</scope>
+            <optional>true</optional>
+        </dependency>
+        <!-- 简化代码生成的工具 -->
+        <dependency>
+            <groupId>com.squareup</groupId>
+            <artifactId>javapoet</artifactId>
+            <version>${javapoet.version}</version>
+            <scope>test</scope>
+            <optional>true</optional>
+        </dependency>
         <!-- Kotlin适配，用于在测试中使用kotlin代码 -->
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
@@ -46,6 +74,7 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+        <!-- lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
