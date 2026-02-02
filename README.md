@@ -1,6 +1,6 @@
 # dynamic-compiler
 
-# Java 动态编译工具k
+# Java 动态编译工具
 
 轻量、易用的 Java 动态编译工具，基于 JDK 原生 JavaCompiler 封装，让 Java 拥有便捷的动态脚本执行能力
 
@@ -35,14 +35,14 @@ JDK 17 及以上版本
 <dependency>
   <groupId>io.github.lzpeng723</groupId>
     <artifactId>dynamic-compiler</artifactId>
-    <version>1.0.0-M1</version>
+    <version>1.0.0-M2</version>
 </dependency>
 ```
 
 ## Gradle 依赖
 
 ```groovy
-implementation 'io.github.lzpeng723:dynamic-compiler:1.0.0-M1'
+implementation 'io.github.lzpeng723:dynamic-compiler:1.0.0-M2'
 ```
 
 # 一、编译 Java 源码（基础无依赖场景）
