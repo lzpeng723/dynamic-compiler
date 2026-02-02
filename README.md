@@ -35,14 +35,14 @@ JDK 17 及以上版本
 <dependency>
   <groupId>io.github.lzpeng723</groupId>
     <artifactId>dynamic-compiler</artifactId>
-    <version>1.0.0-M2</version>
+    <version>1.0.0-M3</version>
 </dependency>
 ```
 
 ## Gradle 依赖
 
 ```groovy
-implementation 'io.github.lzpeng723:dynamic-compiler:1.0.0-M2'
+implementation 'io.github.lzpeng723:dynamic-compiler:1.0.0-M3'
 ```
 
 # 一、编译 Java 源码（基础无依赖场景）
@@ -88,7 +88,7 @@ void testCompileCode() throws Exception {
                 }
             }
             """;
-    final ClassLoader classLoader = JavaSourceCompiler.create()
+    final ClassLoader classLoader = CompilerUtil.create()
             .addSource(className, sourceCode)
             .compile();
     final Class<?> clazz = classLoader.loadClass(className);
@@ -132,7 +132,7 @@ void testCompileMultiCode() throws Exception {
                 }
             }
             """;
-    final ClassLoader classLoader = JavaSourceCompiler.create()
+    final ClassLoader classLoader = CompilerUtil.create()
             .addSource(className1, sourceCode1)
             .addSource(className2, sourceCode2)
             .compile();
@@ -157,7 +157,7 @@ void testCompileMultiCode() throws Exception {
  */
 @Test
 void testCompileFile() throws Exception {
-    final ClassLoader classLoader = JavaSourceCompiler.create()
+    final ClassLoader classLoader = CompilerUtil.create()
             .addSource(new ClassPathResource("test-compile/A.java").getFile())
             .compile();
     final Class<?> clazz = classLoader.loadClass("A");
@@ -183,7 +183,7 @@ void testCompileFile() throws Exception {
  */
 @Test
 void testCompileDirectory() throws Exception {
-    final ClassLoader classLoader = JavaSourceCompiler.create()
+    final ClassLoader classLoader = CompilerUtil.create()
             .addSourceDirectory(new ClassPathResource("test-compile").getFile())
             .addProcessorPath(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
             .compile();
@@ -216,11 +216,11 @@ void testCompileWithCurrentEnv() throws Exception {
             
             public class HelloWorld {
                 public static void hello(){
-                    System.out.println("JavaSourceCompiler = " + JavaSourceCompiler.create());
+                    System.out.println("JavaSourceCompiler = " + CompilerUtil.create());
                 }
             }
             """;
-    final ClassLoader classLoader = JavaSourceCompiler.create()
+    final ClassLoader classLoader = CompilerUtil.create()
             .addSource(className, sourceCode)
             .compile();
     final Class<?> clazz = classLoader.loadClass(className);
@@ -271,7 +271,7 @@ void testCompileWithDependency() throws Exception {
                 }
             }
             """;
-    final ClassLoader classLoader = JavaSourceCompiler.create()
+    final ClassLoader classLoader = CompilerUtil.create()
             .addSource(className, sourceCode)
             .addDependency(new File("../cn/hutool/hutool-all/5.8.42/hutool-all-5.8.42.jar"))
             .compile();
@@ -308,7 +308,7 @@ void testCompileWithDependency() throws Exception {
                 }
             }
             """;
-    final ClassLoader classLoader = JavaSourceCompiler.create()
+    final ClassLoader classLoader = CompilerUtil.create()
             .addSource(className, sourceCode)
             .addDependency("https://repo1.maven.org/maven2/cn/hutool/hutool-all/5.8.42/hutool-all-5.8.42.jar")
             .compile();
@@ -347,7 +347,7 @@ void testCompileWithClassLoader() throws Exception {
             """;
     final URL url = new URL("https://repo1.maven.org/maven2/cn/hutool/hutool-all/5.8.42/hutool-all-5.8.42.jar");
     final URLClassLoader urlClassLoader = URLClassLoader.newInstance(new URL[]{url});
-    final ClassLoader classLoader = JavaSourceCompiler.create(urlClassLoader)
+    final ClassLoader classLoader = CompilerUtil.create(urlClassLoader)
             .addSource(className, sourceCode)
             .compile();
     final Class<?> clazz = classLoader.loadClass(className);
@@ -391,7 +391,7 @@ void testCompileWithClassLoader() throws Exception {
  * @throws Exception 如果在编译、类加载或方法调用过程中发生异常
  */
 @Test
-void testCompileWithApt() throws Exception {
+void testCompileWithLombok() throws Exception {
     final String className = "test.HelloWorld";
     final String sourceCode = """
             package test;
@@ -418,7 +418,7 @@ void testCompileWithApt() throws Exception {
             	private String address;
             }
             """;
-    final ClassLoader classLoader = JavaSourceCompiler.create()
+    final ClassLoader classLoader = CompilerUtil.create()
             .addSource(className, sourceCode)
             .addProcessorPath(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
             .compile();
@@ -472,7 +472,7 @@ void testCompileCodeAndSetClassOutput() throws Exception {
           """;
   final File compileClasses = new File("target/compile-classes");
   compileClasses.mkdirs();
-  final ClassLoader classLoader = JavaSourceCompiler.create()
+  final ClassLoader classLoader = CompilerUtil.create()
           .addSource(className, sourceCode)
           .addProcessorPath(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
           .setClassOutput(compileClasses)
@@ -507,7 +507,7 @@ void testCompileError() throws Exception {
             }
             """;
     // 注意：此处未添加 hutool 依赖，编译会抛出异常
-    final ClassLoader classLoader = JavaSourceCompiler.create()
+    final ClassLoader classLoader = CompilerUtil.create()
             .addSource(className, sourceCode)
             .compile();
     final Class<?> clazz = classLoader.loadClass(className);
