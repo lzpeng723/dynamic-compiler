@@ -2,10 +2,10 @@ package io.github.lzpeng.compiler.util;
 
 import io.github.lzpeng.compiler.JavaSourceCompiler;
 
-import javax.tools.*;
+import java.io.File;
 
 /**
- * 源码编译工具类，主要封装{@link JavaCompiler} 相关功能
+ * 源码编译工具类，主要封装{@link JavaSourceCompiler} 相关功能
  *
  * @author lzpeng723
  * @since 1.0.0-M1
@@ -13,64 +13,59 @@ import javax.tools.*;
 public final class CompilerUtil {
 
     /**
-     * java 编译器
-     */
-    public static final JavaCompiler SYSTEM_COMPILER = ToolProvider.getSystemJavaCompiler();
-
-    /**
-     * 编译指定的源码文件
+     * 创建Java源码编译器
      *
-     * @param sourceFiles 源码文件路径
-     * @return 0表示成功，否则其他
+     * @return Java源码编译器
      */
-    public static boolean compile(String... sourceFiles) {
-        return 0 == SYSTEM_COMPILER.run(null, null, null, sourceFiles);
+    public static JavaSourceCompiler create() {
+        return JavaSourceCompiler.create();
     }
 
     /**
-     * 获取{@link StandardJavaFileManager}
+     * 创建Java源码编译器
      *
-     * @return {@link StandardJavaFileManager}
+     * @param parent 父类加载器
+     * @return Java源码编译器
      */
-    public static StandardJavaFileManager getFileManager() {
-        return getFileManager(null);
-    }
-
-    /**
-     * 获取{@link StandardJavaFileManager}
-     *
-     * @param diagnosticListener 异常收集器
-     * @return {@link StandardJavaFileManager}
-     */
-    public static StandardJavaFileManager getFileManager(DiagnosticListener<? super JavaFileObject> diagnosticListener) {
-        return SYSTEM_COMPILER.getStandardFileManager(diagnosticListener, null, null);
-    }
-
-    /**
-     * 新建编译任务
-     *
-     * @param fileManager        {@link JavaFileManager}，用于管理已经编译好的文件
-     * @param diagnosticListener 诊断监听
-     * @param options            选项，例如 -cpXXX等
-     * @param compilationUnits   编译单元，即需要编译的对象
-     * @return {@link JavaCompiler.CompilationTask}
-     */
-    public static JavaCompiler.CompilationTask getTask(
-            JavaFileManager fileManager,
-            DiagnosticListener<? super JavaFileObject> diagnosticListener,
-            Iterable<String> options,
-            Iterable<? extends JavaFileObject> compilationUnits) {
-        return SYSTEM_COMPILER.getTask(null, fileManager, diagnosticListener, options, null, compilationUnits);
-    }
-
-    /**
-     * 获取{@link JavaSourceCompiler}
-     *
-     * @param parent 父{@link ClassLoader}
-     * @return {@link JavaSourceCompiler}
-     * @see JavaSourceCompiler#create(ClassLoader)
-     */
-    public static JavaSourceCompiler getCompiler(ClassLoader parent) {
+    public static JavaSourceCompiler create(ClassLoader parent) {
         return JavaSourceCompiler.create(parent);
     }
+
+    /**
+     * 编译给定的Java源代码并返回对应的类加载器。
+     *
+     * @param className  类名，用于指定编译后的类名称
+     * @param sourceCode 待编译的Java源代码字符串
+     * @return 编译完成后生成的类加载器，通过该类加载器可以加载编译得到的类
+     */
+    public static ClassLoader compile(String className, String sourceCode) {
+        return create().addSource(className, sourceCode).compile();
+    }
+
+    /**
+     * 编译给定的Java源代码文件或目录，并返回对应的类加载器。
+     *
+     * @param file 待编译的Java源代码文件或包含Java源代码文件的目录
+     * @return 编译完成后生成的类加载器，通过该类加载器可以加载编译得到的类
+     * @throws IllegalArgumentException 如果file为空、不存在或者无法读取
+     */
+    public static ClassLoader compile(File file) {
+        if (file == null) {
+            throw new IllegalArgumentException("文件为空");
+        }
+        if (!file.exists()) {
+            throw new IllegalArgumentException("文件不存在 " + file.getAbsolutePath());
+        }
+        if (!file.canRead()) {
+            throw new IllegalArgumentException("无法读取文件 " + file.getAbsolutePath());
+        }
+        if (file.isFile()) {
+            return create().addSource(file).compile();
+        }
+        if (file.isDirectory()) {
+            return create().addSourceDirectory(file).compile();
+        }
+        return null;
+    }
+
 }
