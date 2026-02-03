@@ -1,7 +1,7 @@
 package io.github.lzpeng.compiler;
 
 
-import java.io.Serial;
+//import java.io.Serial;
 
 /**
  * 编译异常
@@ -11,7 +11,7 @@ import java.io.Serial;
  */
 public final class CompilerException extends RuntimeException {
 
-    @Serial
+    //@Serial
     private static final long serialVersionUID = 1L;
 
 

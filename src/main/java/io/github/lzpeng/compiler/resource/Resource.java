@@ -107,7 +107,7 @@ public interface Resource {
      */
     default String readStr(Charset charset) {
         try (final BufferedReader reader = getReader(charset)) {
-            return reader.lines().collect(Collectors.joining());
+            return reader.lines().collect(Collectors.joining(System.lineSeparator()));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -140,8 +140,10 @@ public interface Resource {
      */
     default void writeTo(OutputStream out) {
         try (InputStream in = getInputStream()) {
-            //out.write(IoUtil.readAllBytes(in));
-            in.transferTo(out);
+            // jdk8
+            out.write(IoUtil.readAllBytes(in));
+            // jdk17
+            //in.transferTo(out);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

@@ -13,7 +13,7 @@ public class ClassPathResource extends URLResource {
      * @param path 资源的路径
      */
     public ClassPathResource(String path) {
-        this(null, path);
+        this(path.substring(path.lastIndexOf("/") + 1, path.length() - 5), path);
     }
 
 

@@ -93,7 +93,7 @@ public final class ResourceClassLoader<T extends Resource> extends SecureClassLo
     protected Enumeration<URL> findResources(String name) throws IOException {
         final URL resource = this.findResource(name);
 
-        return new Enumeration<>() {
+        return new Enumeration<URL>() {
 
             private URL url = resource;
 

@@ -16,10 +16,11 @@ import javax.lang.model.util.Elements;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 //@AutoService(Processor.class)
 @SupportedAnnotationTypes(AuditProcessor.WITH_AUDIT)
-@SupportedSourceVersion(SourceVersion.RELEASE_17)
+@SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class AuditProcessor extends AbstractProcessor {
 
     /**
@@ -187,7 +188,7 @@ public class AuditProcessor extends AbstractProcessor {
                         field.getSimpleName().toString(),
                         field.getModifiers().toArray(new Modifier[0])
                 ).build())
-                .toList();
+                .collect(Collectors.toSet());
     }
 
     /**

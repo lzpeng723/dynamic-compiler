@@ -13,10 +13,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- *
- * @author lzpeng723
+ * StreamJavaFileObject类扩展了SimpleJavaFileObject，用于表示可以读写数据的Java文件对象。
+ * 该类提供了多种构造方法来创建不同类型的文件对象，并支持通过输入输出流进行数据读写。
+ * 它主要用于处理Java源代码或编译后的类文件等场景。
  */
-sealed class StreamJavaFileObject extends SimpleJavaFileObject permits JavaSourceFileObject, JavaClassFileObject {
+/*sealed*/ class StreamJavaFileObject extends SimpleJavaFileObject /*permits JavaSourceFileObject, JavaClassFileObject*/ {
 
     /**
      * 代表此文件对象的源代码内容。
@@ -154,8 +155,10 @@ sealed class StreamJavaFileObject extends SimpleJavaFileObject permits JavaSourc
      */
     private static OutputStream byteArrayToOutputStream(byte[] bytes) {
         final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        //byteArrayOutputStream.write(bytes, 0, bytes.length);
-        byteArrayOutputStream.writeBytes(bytes);
+        // jdk8
+        byteArrayOutputStream.write(bytes, 0, bytes.length);
+        // jdk17
+        //byteArrayOutputStream.writeBytes(bytes);
         return byteArrayOutputStream;
     }
 

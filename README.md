@@ -23,7 +23,7 @@ JDK 提供了 JavaCompiler 用于动态编译 java 源码文件，然后通过�
 # 使用
 
 前置要求
-JDK 17 及以上版本
+JDK 1.8 及以上版本
 项目构建工具：Maven/Gradle（可选，用于快速引入本工具）
 
 # 快速引入
@@ -35,14 +35,14 @@ JDK 17 及以上版本
 <dependency>
   <groupId>io.github.lzpeng723</groupId>
     <artifactId>dynamic-compiler</artifactId>
-    <version>1.0.0-M3</version>
+    <version>1.0.0-M4</version>
 </dependency>
 ```
 
 ## Gradle 依赖
 
 ```groovy
-implementation 'io.github.lzpeng723:dynamic-compiler:1.0.0-M3'
+implementation 'io.github.lzpeng723:dynamic-compiler:1.0.0-M4'
 ```
 
 # 一、编译 Java 源码（基础无依赖场景）

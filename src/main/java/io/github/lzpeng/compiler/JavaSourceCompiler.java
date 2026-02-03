@@ -485,7 +485,7 @@ public final class JavaSourceCompiler {
         final Collection<URL> classPathColl = this.locationMap.getOrDefault(StandardLocation.CLASS_PATH, Collections.emptySet());
         final ClassLoader classLoader = classPathColl.isEmpty() ? this.parentClassLoader : URLClassLoader.newInstance(classPathColl.toArray(new URL[0]), this.parentClassLoader);
         // 创建编译器
-        try (final JavaClassFileManager javaFileManager = new JavaClassFileManager(classLoader, this.standardFileManager)) {
+        try (final JavaClassFileManager javaFileManager = new JavaClassFileManager(classLoader, this.standardFileManager, false)) {
             // classpath
             if (null == options) {
                 options = new ArrayList<>();

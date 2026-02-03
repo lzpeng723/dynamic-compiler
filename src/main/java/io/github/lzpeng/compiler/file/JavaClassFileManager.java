@@ -4,6 +4,8 @@ import io.github.lzpeng.compiler.CharPool;
 import io.github.lzpeng.compiler.classloader.ResourceClassLoader;
 import io.github.lzpeng.compiler.resource.FileObjectResource;
 import io.github.lzpeng.compiler.resource.Resource;
+import io.github.lzpeng.compiler.util.JdkVersionUtil;
+import io.github.lzpeng.compiler.util.ReflectUtil;
 import io.github.lzpeng.compiler.util.UrlUtil;
 
 import javax.tools.*;
@@ -11,7 +13,12 @@ import javax.tools.JavaFileObject.Kind;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.jar.JarFile;
 
 /**
  * Java 字节码文件对象管理器
@@ -27,6 +34,11 @@ import java.util.*;
 public final class JavaClassFileManager extends ForwardingJavaFileManager<JavaFileManager> {
 
     /**
+     * 文件缓存
+     */
+    private static final Map<String, File> fileCacheMap = new ConcurrentHashMap<>();
+
+    /**
      * 存储java字节码文件对象映射
      */
     private final Map<String, Resource> classFileObjectMap = new HashMap<>();
@@ -36,15 +48,25 @@ public final class JavaClassFileManager extends ForwardingJavaFileManager<JavaFi
      */
     private final ClassLoader parentClassLoader;
 
+
+    private final boolean contextUseOptimizedZip;
+
     /**
      * 构造
      *
      * @param parentClassLoader 父类加载器
      * @param fileManager       字节码文件管理器
      */
-    public JavaClassFileManager(ClassLoader parentClassLoader, JavaFileManager fileManager) {
+    public JavaClassFileManager(ClassLoader parentClassLoader, JavaFileManager fileManager, boolean contextUseOptimizedZip) {
         super(fileManager);
         this.parentClassLoader = Optional.ofNullable(parentClassLoader).orElseGet(Thread.currentThread()::getContextClassLoader);
+        this.contextUseOptimizedZip = contextUseOptimizedZip;
+        if (JdkVersionUtil.isJdk8() && this.fileManager instanceof StandardJavaFileManager) {
+            final Object standardContextUseOptimizedZip = ReflectUtil.getFieldValue(this.fileManager, "contextUseOptimizedZip");
+            if (Boolean.parseBoolean(String.valueOf(standardContextUseOptimizedZip)) != this.contextUseOptimizedZip) {
+                ReflectUtil.setFieldValue(this.fileManager, "contextUseOptimizedZip", this.contextUseOptimizedZip);
+            }
+        }
     }
 
     /**
@@ -110,13 +132,66 @@ public final class JavaClassFileManager extends ForwardingJavaFileManager<JavaFi
             final String packageRes = packageName.replace(CharPool.DOT, CharPool.SLASH);
             final Enumeration<URL> enumeration = this.parentClassLoader.getResources(packageRes);
             while (enumeration.hasMoreElements()) {
-                final URL url = enumeration.nextElement();
-                final File file = UrlUtil.toFile(url);
-                classPathSet.add(file);
+                // 获取文件
+                final File tempJarFile = this.getTempJarFile(enumeration);
+                classPathSet.add(tempJarFile);
             }
             standardJavaFileManager.setLocation(location, classPathSet);
         }
         return super.list(location, packageName, kinds, recurse);
+    }
+
+    /**
+     * 获取临时的JAR文件。
+     *
+     * @param enumeration URL枚举，用于获取URL
+     * @return 与给定URL对应的临时JAR文件
+     * @throws IOException 如果在处理过程中发生I/O错误
+     */
+    private File getTempJarFile(Enumeration<URL> enumeration) throws IOException {
+        final URL url = enumeration.nextElement();
+        final File file = UrlUtil.toFile(url);
+        if (JdkVersionUtil.isJdk9Plus()) {
+            return file;
+        }
+        if (!this.contextUseOptimizedZip) {
+            return file;
+        }
+        if (!file.getName().endsWith(".tmp")) {
+            return file;
+        }
+        // jdk8的UrlClassLoader会有文件不释放的内存泄漏，17正常
+        // jdk8中 com.sun.tools.javac.file.JavacFileManager.openArchive(java.io.File, boolean) 会报错
+        return JavaClassFileManager.fileCacheMap.computeIfAbsent(file.getAbsolutePath(), __ -> {
+            try {
+                final File tempJarFile = Files.createTempFile("dynamic-compiler", ".jar").toFile();
+                Files.copy(file.toPath(), tempJarFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                tempJarFile.deleteOnExit();
+                return tempJarFile;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    /**
+     * 关闭URL类加载器中使用的Jar文件。
+     * 如果父类加载器是URLClassLoader的实例，则通过反射访问其内部字段，关闭所有相关的Jar文件。
+     *
+     * @throws IOException 如果在关闭Jar文件时发生I/O错误
+     */
+    private void closeUrlClassLoader() throws IOException {
+        if (this.parentClassLoader instanceof URLClassLoader) {
+            // ((URLClassLoader) this.parentClassLoader).close();
+            final Object ucp = ReflectUtil.getFieldValue(this.parentClassLoader, "ucp");
+            final List<?> loaders = ReflectUtil.getFieldValue(ucp, "loaders");
+            if (loaders != null) {
+                for (Object loader : loaders) {
+                    final JarFile jarFile = ReflectUtil.invokeMethod(loader, "getJarFile");
+                    jarFile.close();
+                }
+            }
+        }
     }
 
 }

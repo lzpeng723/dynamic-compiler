@@ -8,7 +8,7 @@
 
     <groupId>io.github.lzpeng723</groupId>
     <artifactId>dynamic-compiler</artifactId>
-    <version>1.0.0-M3</version>
+    <version>1.0.0-M4</version>
     <name>dynamic-compiler</name>
     <description>
         dynamic-compiler
@@ -22,10 +22,19 @@
         <Automatic-Module-Name>io.github.lzpeng723</Automatic-Module-Name>
 
         <!-- versions -->
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-        <compile.version>17</compile.version>
-        <junit.version>6.0.0</junit.version>
+        <jdk.version>1.8</jdk.version>
+        <jdk-test.version>1.8</jdk-test.version>
+        <maven.compiler.source>${jdk.version}</maven.compiler.source>
+        <maven.compiler.target>${jdk.version}</maven.compiler.target>
+        <maven.compiler.testSource>${jdk-test.version}</maven.compiler.testSource>
+        <maven.compiler.testTarget>${jdk-test.version}</maven.compiler.testTarget>
+        <compiler.version>${jdk.version}</compiler.version>
+
+        <maven-toolchains-plugin.version>1.1</maven-toolchains-plugin.version>
+        <maven-compiler-plugin.version>3.8.0</maven-compiler-plugin.version>
+
+        <!--<junit.version>6.0.0</junit.version>-->
+        <junit.version>5.13.2</junit.version>
         <lombok.version>1.18.42</lombok.version>
         <kotlin-version>2.2.20</kotlin-version>
         <bouncycastle.version>1.82</bouncycastle.version>
@@ -80,6 +89,15 @@
             <artifactId>junit-jupiter-params</artifactId>
             <version>${junit.version}</version>
             <scope>test</scope>
+        </dependency>
+        <!-- 动态引入tools.jar，无硬编码路径 -->
+        <dependency>
+            <groupId>com.sun</groupId>
+            <artifactId>tools</artifactId>
+            <version>${java.version}</version> <!-- 复用项目JDK版本，无需手动写1.8.0_201 -->
+            <scope>system</scope>
+            <!-- 动态路径：从JRE目录回溯到JDK根目录，拼接tools.jar -->
+            <systemPath>${java.home}/../lib/tools.jar</systemPath>
         </dependency>
         <!-- lombok -->
         <dependency>
@@ -150,12 +168,16 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.1</version>
+                <version>${maven-compiler-plugin.version}</version>
                 <configuration>
                     <fork>true</fork>
                     <encoding>UTF-8</encoding>
-                    <source>${compile.version}</source>
-                    <target>${compile.version}</target>
+                    <source>${jdk.version}</source>
+                    <target>${jdk.version}</target>
+                    <testSource>${jdk-test.version}</testSource>
+                    <testTarget>${jdk-test.version}</testTarget>
+                    <showDeprecation>true</showDeprecation>
+                    <showWarnings>true</showWarnings>
                     <!-- 编译时启用警告位置 -->
                     <compilerArgument>-Xlint:unchecked</compilerArgument>
                 </configuration>

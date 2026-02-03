@@ -1,8 +1,12 @@
 package io.github.lzpeng.compiler;
 
 import io.github.lzpeng.compiler.resource.ClassPathResource;
+import io.github.lzpeng.compiler.resource.Resource;
 import io.github.lzpeng.compiler.util.CompilerUtil;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.lang.reflect.Constructor;
@@ -15,9 +19,10 @@ import java.nio.file.Files;
  * CompilerUtilTest 是一个测试类，用于验证 {@link CompilerUtil} 类的功能。
  * 该测试类通过多个测试方法来确保编译 Java 源代码、加载编译后的类以及执行静态方法等操作的正确性。
  * 测试涵盖了单个类、多个类、包含外部依赖的类、使用 Lombok 注解处理器的情况以及其他相关场景。
+ *
  * @author lzpeng723
  */
-@Tag("动态编译测试")
+@Tag("jdk8")
 class CompilerUtilTest {
 
 
@@ -33,18 +38,12 @@ class CompilerUtilTest {
      */
     @Test
     @DisplayName("测试编译单个类")
-    void testCompileCode() throws Exception {
+    void testCompileSingleCode() throws Exception {
         final String className = "test.HelloWorld";
-        final String sourceCode = """
-                package test;
-                
-                public class HelloWorld {
-                    public static void hello(){
-                        System.out.println("Hello World");
-                    }
-                }
-                """;
-        final ClassLoader classLoader = CompilerUtil.compile(className, sourceCode);
+        final Resource resource = new ClassPathResource("test-compile/test-compile-single-code/HelloWorld.java");
+        final String resourceName = resource.getName();
+        final String sourceCode = resource.readUtf8Str();
+        final ClassLoader classLoader = CompilerUtil.compile(resourceName, sourceCode);
         final Class<?> clazz = classLoader.loadClass(className);
         final Method helloMethod = clazz.getDeclaredMethod("hello");
         helloMethod.invoke(null);
@@ -63,31 +62,14 @@ class CompilerUtilTest {
     @Test
     @DisplayName("测试编译多个类")
     void testCompileMultiCode() throws Exception {
-        final String className1 = "test.HelloWorld";
-        final String sourceCode1 = """
-                package test;
-                
-                public class HelloWorld {
-                    public static void hello(){
-                        Demo.demo("Hello World");
-                    }
-                }
-                """;
-        final String className2 = "test.Demo";
-        final String sourceCode2 = """
-                package test;
-                
-                public class Demo {
-                    public static void demo(String str){
-                        System.out.println("Demo " + str);
-                    }
-                }
-                """;
+        final String className = "test.HelloWorld";
+        final Resource helloWorldResource = new ClassPathResource("test-compile/test-compile-multi-code/HelloWorld.java");
+        final Resource demoResource = new ClassPathResource("test-compile/test-compile-multi-code/Demo.java");
         final ClassLoader classLoader = CompilerUtil.create()
-                .addSource(className1, sourceCode1)
-                .addSource(className2, sourceCode2)
+                .addSource(helloWorldResource.getName(), helloWorldResource.readUtf8Str())
+                .addSource(demoResource.getName(), demoResource.readUtf8Str())
                 .compile();
-        final Class<?> clazz = classLoader.loadClass(className1);
+        final Class<?> clazz = classLoader.loadClass(className);
         final Method helloMethod = clazz.getDeclaredMethod("hello");
         helloMethod.invoke(null);
     }
@@ -106,20 +88,10 @@ class CompilerUtilTest {
     @Test
     @DisplayName("测试编译包含依赖")
     void testCompileWithDependency() throws Exception {
+        final Resource resource = new ClassPathResource("test-compile/test-compile-with-dependency/HelloWorld.java");
         final String className = "test.HelloWorld";
-        final String sourceCode = """
-                package test;
-                
-                import cn.hutool.system.SystemUtil;
-                
-                public class HelloWorld {
-                    public static void hello(){
-                        SystemUtil.dumpSystemInfo();
-                    }
-                }
-                """;
         final ClassLoader classLoader = CompilerUtil.create()
-                .addSource(className, sourceCode)
+                .addSource(resource.getName(), resource.readUtf8Str())
                 .addDependencyPath("https://repo1.maven.org/maven2/cn/hutool/hutool-all/5.8.43/hutool-all-5.8.43.jar")
                 .compile();
         final Class<?> clazz = classLoader.loadClass(className);
@@ -141,35 +113,12 @@ class CompilerUtilTest {
     @Test
     @DisplayName("测试编译包含Lombok")
     void testCompileWithLombok() throws Exception {
+        final Resource resource = new ClassPathResource("test-compile/test-compile-with-lombok/HelloWorld.java");
         final String className = "test.HelloWorld";
-        final String sourceCode = """
-                package test;
-                
-                import lombok.Builder;
-                import lombok.Data;
-                
-                public class HelloWorld {
-                    public static void hello(){
-                		JavaBean javaBean = JavaBean.builder()
-                			.name("lzpeng723")
-                			.age(18)
-                			.address("地球")
-                			.build();
-                        System.out.println(javaBean);
-                    }
-                }
-                
-                @Data
-                @Builder
-                class JavaBean {
-                	private String name;
-                	private int age;
-                	private String address;
-                }
-                """;
         final ClassLoader classLoader = CompilerUtil.create()
-                .addSource(className, sourceCode)
+                .addSource(resource.getName(), resource.readUtf8Str())
                 .addProcessorPath(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
+                //.addProcessorPath(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
                 .compile();
         final Class<?> clazz = classLoader.loadClass(className);
         final Method helloMethod = clazz.getDeclaredMethod("hello");
@@ -189,37 +138,13 @@ class CompilerUtilTest {
      */
     @Test
     @DisplayName("测试编译指定class文件输出")
-    void testCompileCodeAndSetClassOutput() throws Exception {
+    void testCompileWithClassOutput() throws Exception {
+        final Resource resource = new ClassPathResource("test-compile/test-compile-with-class-output/HelloWorld.java");
         final String className = "test.HelloWorld";
-        final String sourceCode = """
-                package test;
-                
-                import lombok.Builder;
-                import lombok.Data;
-                
-                public class HelloWorld {
-                    public static void hello(){
-                		JavaBean javaBean = JavaBean.builder()
-                			.name("lzpeng723")
-                			.age(18)
-                			.address("地球")
-                			.build();
-                        System.out.println(javaBean);
-                    }
-                }
-                
-                @Data
-                @Builder
-                class JavaBean {
-                	private String name;
-                	private int age;
-                	private String address;
-                }
-                """;
         final File compileClasses = new File("target/compile-classes");
         Files.createDirectories(compileClasses.toPath());
         final ClassLoader classLoader = CompilerUtil.create()
-                .addSource(className, sourceCode)
+                .addSource(resource.getName(), resource.readUtf8Str())
                 .addProcessorPath(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
                 .setClassOutput(compileClasses)
                 .compile();
@@ -243,12 +168,12 @@ class CompilerUtilTest {
     @Test
     @DisplayName("测试编译文件")
     void testCompileFile() throws Exception {
-        final ClassLoader classLoader = CompilerUtil.compile(new ClassPathResource("test-compile/A.java").getFile());
+        final ClassLoader classLoader = CompilerUtil.compile(new ClassPathResource("test-compile/test-compile-file/A.java").getFile());
         final Class<?> clazz = classLoader.loadClass("A");
         final Constructor<?> constructor = clazz.getConstructor(ClassLoader.class);
         final Object a = constructor.newInstance(classLoader);
         System.out.println("a = " + a);
-        Assertions.assertTrue(String.valueOf(a).startsWith("A["));
+        Assertions.assertTrue(String.valueOf(a).startsWith("A@"));
     }
 
 
@@ -266,11 +191,11 @@ class CompilerUtilTest {
     @Test
     @DisplayName("测试编译文件夹")
     void testCompileDirectory() throws Exception {
-        final ClassLoader classLoader = CompilerUtil.compile(new ClassPathResource("test-compile").getFile());
+        final ClassLoader classLoader = CompilerUtil.compile(new ClassPathResource("test-compile/test-compile-directory").getFile());
         final Class<?> clazz = classLoader.loadClass("C");
         final Object c = clazz.getConstructor().newInstance();
         System.out.println("c = " + c);
-        Assertions.assertTrue(String.valueOf(c).startsWith("C["));
+        Assertions.assertTrue(String.valueOf(c).startsWith("C@"));
     }
 
 
@@ -287,22 +212,12 @@ class CompilerUtilTest {
     @Test
     @DisplayName("测试编译指定类加载器")
     void testCompileWithClassLoader() throws Exception {
+        final Resource resource = new ClassPathResource("test-compile/test-compile-with-dependency/HelloWorld.java");
         final String className = "test.HelloWorld";
-        final String sourceCode = """
-                package test;
-                
-                import cn.hutool.system.SystemUtil;
-                
-                public class HelloWorld {
-                    public static void hello(){
-                        SystemUtil.dumpSystemInfo();
-                    }
-                }
-                """;
         final URL url = new URL("https://repo1.maven.org/maven2/cn/hutool/hutool-all/5.8.43/hutool-all-5.8.43.jar");
         final URLClassLoader urlClassLoader = URLClassLoader.newInstance(new URL[]{url});
         final ClassLoader classLoader = CompilerUtil.create(urlClassLoader)
-                .addSource(className, sourceCode)
+                .addSource(resource.getName(), resource.readUtf8Str())
                 .compile();
         final Class<?> clazz = classLoader.loadClass(className);
         final Method helloMethod = clazz.getDeclaredMethod("hello");
@@ -322,20 +237,10 @@ class CompilerUtilTest {
     @Test
     @DisplayName("测试编译使用当前环境信息")
     void testCompileWithCurrentEnv() throws Exception {
+        final Resource resource = new ClassPathResource("test-compile/test-compile-with-current-env/HelloWorld.java");
         final String className = "test.HelloWorld";
-        final String sourceCode = """
-                package test;
-                
-                import io.github.lzpeng.compiler.util.CompilerUtil;
-                
-                public class HelloWorld {
-                    public static void hello(){
-                        System.out.println("CompilerUtil = " + CompilerUtil.create());
-                    }
-                }
-                """;
         final ClassLoader classLoader = CompilerUtil.create()
-                .addSource(className, sourceCode)
+                .addSource(resource.getName(), resource.readUtf8Str())
                 .compile();
         final Class<?> clazz = classLoader.loadClass(className);
         final Method helloMethod = clazz.getDeclaredMethod("hello");
@@ -355,43 +260,12 @@ class CompilerUtilTest {
     @Test
     @DisplayName("测试编译指定注解处理器")
     void testCompileWithProcessor() throws Exception {
+        final Resource resource = new ClassPathResource("test-compile/test-compile-with-processor/HelloWorld.java");
         final String className = "test.HelloWorld";
-        final String sourceCode = """
-                package test;
-                
-                import java.lang.annotation.ElementType;
-                import java.lang.annotation.Retention;
-                import java.lang.annotation.RetentionPolicy;
-                import java.lang.annotation.Target;
-                
-                public class HelloWorld {
-                
-                    public static void hello(){
-                        System.out.println(new JavaBeanAudit());
-                    }
-                
-                }
-                
-                @WithAudit
-                class JavaBean {
-                	private String name;
-                	private int age;
-                	private String address;
-                }
-                
-                /**
-                 * 标注该注解的JavaBean会自动添加审计字段和完整的toString()方法
-                 * 日期类型使用JDK8原生的java.time.LocalDate（仅日期，无时间）
-                 */
-                @Target(ElementType.TYPE)
-                @Retention(RetentionPolicy.SOURCE)
-                @interface WithAudit {
-                }
-                """;
         final File compileSources = new File("target/compile-sources");
         Files.createDirectories(compileSources.toPath());
         final ClassLoader classLoader = CompilerUtil.create()
-                .addSource(className, sourceCode)
+                .addSource(resource.getName(), resource.readUtf8Str())
                 .addProcessor(new AuditProcessor())
                 .setSourceOutput(compileSources)
                 .compile();
@@ -413,20 +287,10 @@ class CompilerUtilTest {
     @DisplayName("测试编译错误")
     void testCompileError() {
         try {
+            final Resource resource = new ClassPathResource("test-compile/test-compile-error/HelloWorld.java");
             final String className = "test.HelloWorld";
-            final String sourceCode = """
-                    package test;
-                    
-                    import cn.hutool.system.SystemUtil;
-                    
-                    public class HelloWorld {
-                        public static void hello(){
-                            SystemUtil.dumpSystemInfo();
-                        }
-                    }
-                    """;
             final ClassLoader classLoader = CompilerUtil.create()
-                    .addSource(className, sourceCode)
+                    .addSource(resource.getName(), resource.readUtf8Str())
                     .compile();
             final Class<?> clazz = classLoader.loadClass(className);
             final Method helloMethod = clazz.getDeclaredMethod("hello");

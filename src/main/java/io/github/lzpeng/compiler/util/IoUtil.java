@@ -1,5 +1,6 @@
 package io.github.lzpeng.compiler.util;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -18,15 +19,15 @@ public final class IoUtil {
      */
     public static byte[] readAllBytes(InputStream inputStream) throws IOException {
         // jdk 8
-//        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-//        byte[] buffer = new byte[1024];
-//        int n;
-//        while ((n = inputStream.read(buffer)) != -1) {
-//            outputStream.write(buffer, 0, n);
-//        }
-//        return outputStream.toByteArray();
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        byte[] buffer = new byte[1024];
+        int n;
+        while ((n = inputStream.read(buffer)) != -1) {
+            outputStream.write(buffer, 0, n);
+        }
+        return outputStream.toByteArray();
         // jdk 17
-        return inputStream.readAllBytes();
+        //return inputStream.readAllBytes();
     }
 
 }
