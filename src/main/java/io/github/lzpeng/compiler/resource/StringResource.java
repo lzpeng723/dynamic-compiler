@@ -1,7 +1,6 @@
 package io.github.lzpeng.compiler.resource;
 
 import io.github.lzpeng.compiler.util.UriUtil;
-import lombok.RequiredArgsConstructor;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
@@ -15,7 +14,6 @@ import java.nio.charset.StandardCharsets;
  *
  * @author lzpeng723
  */
-@RequiredArgsConstructor
 public class StringResource implements Resource {
 
     /**
@@ -54,6 +52,18 @@ public class StringResource implements Resource {
      */
     public StringResource(String className, String sourceCode) {
         this(className, sourceCode, StandardCharsets.UTF_8);
+    }
+
+    /**
+     *
+     * @param className  类名，可以为null
+     * @param sourceCode  字符串形式的源代码
+     * @param charset 编码
+     */
+    public StringResource(String className, String sourceCode, Charset charset) {
+        this.className = className;
+        this.sourceCode = sourceCode;
+        this.charset = charset;
     }
 
     /**

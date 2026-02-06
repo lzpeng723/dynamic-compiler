@@ -83,6 +83,9 @@ public final class JavaSourceCompiler {
      */
     private JavaSourceCompiler(ClassLoader parent) {
         this.parentClassLoader = Optional.ofNullable(parent).orElseGet(Thread.currentThread()::getContextClassLoader);
+        if (Objects.isNull(this.systemCompiler)) {
+            throw new IllegalStateException("当前环境为JRE，无javac编译器，请切换到JDK运行");
+        }
     }
 
     /**
@@ -457,6 +460,8 @@ public final class JavaSourceCompiler {
      * @return 当前Java源码编译器实例，用于链式调用
      */
     public JavaSourceCompiler clear() {
+        this.sourceList.clear();
+        this.processorList.clear();
         this.locationMap.clear();
         return this;
     }

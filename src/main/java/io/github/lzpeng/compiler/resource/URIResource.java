@@ -1,6 +1,5 @@
 package io.github.lzpeng.compiler.resource;
 
-import lombok.RequiredArgsConstructor;
 
 import java.net.URI;
 
@@ -9,7 +8,6 @@ import java.net.URI;
  * 该类提供了获取资源名称和URI的方法。通过构造函数接收资源名称和URI作为参数，
  * 并将它们存储在不可变的私有字段中。这些字段确保了资源一旦创建后其名称和URI不会被修改。
  */
-@RequiredArgsConstructor
 public class URIResource implements Resource {
     /**
      * 表示资源的名称。该字段在构造URIResource实例时指定，并通过getName方法提供对资源名称的访问。
@@ -24,6 +22,16 @@ public class URIResource implements Resource {
      * 该字段为final类型，意味着一旦被初始化后便不可更改。
      */
     private final URI uri;
+
+    /**
+     *
+     * @param name 资源名称
+     * @param uri  资源uri
+     */
+    public URIResource(String name, URI uri) {
+        this.name = name;
+        this.uri = uri;
+    }
 
     /**
      * 获取资源的名称。

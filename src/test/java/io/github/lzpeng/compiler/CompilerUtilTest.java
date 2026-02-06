@@ -3,6 +3,7 @@ package io.github.lzpeng.compiler;
 import io.github.lzpeng.compiler.resource.ClassPathResource;
 import io.github.lzpeng.compiler.resource.Resource;
 import io.github.lzpeng.compiler.util.CompilerUtil;
+import io.github.lzpeng.compiler.util.ReflectUtil;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -41,12 +42,8 @@ class CompilerUtilTest {
     void testCompileSingleCode() throws Exception {
         final String className = "test.HelloWorld";
         final Resource resource = new ClassPathResource("test-compile/test-compile-single-code/HelloWorld.java");
-        final String resourceName = resource.getName();
         final String sourceCode = resource.readUtf8Str();
-        final ClassLoader classLoader = CompilerUtil.compile(resourceName, sourceCode);
-        final Class<?> clazz = classLoader.loadClass(className);
-        final Method helloMethod = clazz.getDeclaredMethod("hello");
-        helloMethod.invoke(null);
+        CompilerUtil.invokeStaticMethod(className, sourceCode, "hello");
     }
 
     /**
@@ -69,9 +66,8 @@ class CompilerUtilTest {
                 .addSource(helloWorldResource.getName(), helloWorldResource.readUtf8Str())
                 .addSource(demoResource.getName(), demoResource.readUtf8Str())
                 .compile();
-        final Class<?> clazz = classLoader.loadClass(className);
-        final Method helloMethod = clazz.getDeclaredMethod("hello");
-        helloMethod.invoke(null);
+        final Class<?> clazz = ReflectUtil.loadClass(classLoader, className);
+        ReflectUtil.invokeStaticMethod(clazz, "hello");
     }
 
 
@@ -94,9 +90,8 @@ class CompilerUtilTest {
                 .addSource(resource.getName(), resource.readUtf8Str())
                 .addDependencyPath("https://repo1.maven.org/maven2/cn/hutool/hutool-all/5.8.43/hutool-all-5.8.43.jar")
                 .compile();
-        final Class<?> clazz = classLoader.loadClass(className);
-        final Method helloMethod = clazz.getDeclaredMethod("hello");
-        helloMethod.invoke(null);
+        final Class<?> clazz = ReflectUtil.loadClass(classLoader, className);
+        ReflectUtil.invokeStaticMethod(clazz, "hello");
     }
 
 
@@ -118,11 +113,9 @@ class CompilerUtilTest {
         final ClassLoader classLoader = CompilerUtil.create()
                 .addSource(resource.getName(), resource.readUtf8Str())
                 .addProcessorPath(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
-                //.addProcessorPath(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
                 .compile();
-        final Class<?> clazz = classLoader.loadClass(className);
-        final Method helloMethod = clazz.getDeclaredMethod("hello");
-        helloMethod.invoke(null);
+        final Class<?> clazz = ReflectUtil.loadClass(classLoader, className);
+        ReflectUtil.invokeStaticMethod(clazz, "hello");
     }
 
     /**
@@ -148,9 +141,8 @@ class CompilerUtilTest {
                 .addProcessorPath(true, "https://repo1.maven.org/maven2/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar")
                 .setClassOutput(compileClasses)
                 .compile();
-        final Class<?> clazz = classLoader.loadClass(className);
-        final Method helloMethod = clazz.getDeclaredMethod("hello");
-        helloMethod.invoke(null);
+        final Class<?> clazz = ReflectUtil.loadClass(classLoader, className);
+        ReflectUtil.invokeStaticMethod(clazz, "hello");
     }
 
 
@@ -169,11 +161,9 @@ class CompilerUtilTest {
     @DisplayName("测试编译文件")
     void testCompileFile() throws Exception {
         final ClassLoader classLoader = CompilerUtil.compile(new ClassPathResource("test-compile/test-compile-file/A.java").getFile());
-        final Class<?> clazz = classLoader.loadClass("A");
-        final Constructor<?> constructor = clazz.getConstructor(ClassLoader.class);
-        final Object a = constructor.newInstance(classLoader);
-        System.out.println("a = " + a);
-        Assertions.assertTrue(String.valueOf(a).startsWith("A@"));
+        final Object obj = ReflectUtil.newInstance(classLoader, "A");
+        System.out.println("obj = " + obj);
+        Assertions.assertTrue(String.valueOf(obj).startsWith("A@"));
     }
 
 
@@ -192,10 +182,9 @@ class CompilerUtilTest {
     @DisplayName("测试编译文件夹")
     void testCompileDirectory() throws Exception {
         final ClassLoader classLoader = CompilerUtil.compile(new ClassPathResource("test-compile/test-compile-directory").getFile());
-        final Class<?> clazz = classLoader.loadClass("C");
-        final Object c = clazz.getConstructor().newInstance();
-        System.out.println("c = " + c);
-        Assertions.assertTrue(String.valueOf(c).startsWith("C@"));
+        final Object obj = ReflectUtil.newInstance(classLoader, "C");
+        System.out.println("obj = " + obj);
+        Assertions.assertTrue(String.valueOf(obj).startsWith("C@"));
     }
 
 
@@ -219,9 +208,8 @@ class CompilerUtilTest {
         final ClassLoader classLoader = CompilerUtil.create(urlClassLoader)
                 .addSource(resource.getName(), resource.readUtf8Str())
                 .compile();
-        final Class<?> clazz = classLoader.loadClass(className);
-        final Method helloMethod = clazz.getDeclaredMethod("hello");
-        helloMethod.invoke(null);
+        final Class<?> clazz = ReflectUtil.loadClass(classLoader, className);
+        ReflectUtil.invokeStaticMethod(clazz, "hello");
     }
 
     /**
@@ -242,9 +230,8 @@ class CompilerUtilTest {
         final ClassLoader classLoader = CompilerUtil.create()
                 .addSource(resource.getName(), resource.readUtf8Str())
                 .compile();
-        final Class<?> clazz = classLoader.loadClass(className);
-        final Method helloMethod = clazz.getDeclaredMethod("hello");
-        helloMethod.invoke(null);
+        final Class<?> clazz = ReflectUtil.loadClass(classLoader, className);
+        ReflectUtil.invokeStaticMethod(clazz, "hello");
     }
 
     /**
@@ -269,9 +256,8 @@ class CompilerUtilTest {
                 .addProcessor(new AuditProcessor())
                 .setSourceOutput(compileSources)
                 .compile();
-        final Class<?> clazz = classLoader.loadClass(className);
-        final Method helloMethod = clazz.getDeclaredMethod("hello");
-        helloMethod.invoke(null);
+        final Class<?> clazz = ReflectUtil.loadClass(classLoader, className);
+        ReflectUtil.invokeStaticMethod(clazz, "hello");
     }
 
     /**
@@ -292,13 +278,28 @@ class CompilerUtilTest {
             final ClassLoader classLoader = CompilerUtil.create()
                     .addSource(resource.getName(), resource.readUtf8Str())
                     .compile();
-            final Class<?> clazz = classLoader.loadClass(className);
-            final Method helloMethod = clazz.getDeclaredMethod("hello");
-            helloMethod.invoke(null);
+            final Class<?> clazz = ReflectUtil.loadClass(classLoader, className);
+            ReflectUtil.invokeStaticMethod(clazz, "hello");
         } catch (Exception e) {
             e.printStackTrace(System.err);
             Assertions.assertInstanceOf(CompilerException.class, e);
         }
+    }
+
+    /**
+     * 测试执行代码
+     * 该方法用于验证通过 {@link CompilerUtil#executeCode(String)} 方法执行的简单代码块的结果。
+     * 它将打印四个不同算术表达式的计算结果，以确保编译和执行过程按预期工作。
+     *
+     * @throws Exception 如果在执行代码过程中发生异常
+     */
+    @Test
+    @DisplayName("测试执行代码")
+    void testExecuteCode() throws Exception {
+        System.out.println("1 + 1 = " + CompilerUtil.executeCode("return 1+1;"));
+        System.out.println("1 + 2 = " + CompilerUtil.executeCode("return 1+2;"));
+        System.out.println("1 + 3 = " + CompilerUtil.executeCode("return 1+3;"));
+        System.out.println("1 + 4 = " + CompilerUtil.executeCode("return 1+4;"));
     }
 
 

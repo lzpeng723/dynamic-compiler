@@ -11,6 +11,7 @@ public class JdkVersionUtil {
 
     /**
      * 获取JDK核心主版本号（8/9/11/21），缓存结果，仅解析一次
+     *
      * @return JDK主版本号
      */
     public static int getJdkMainVersion() {
@@ -19,12 +20,9 @@ public class JdkVersionUtil {
         }
         // 优先使用Java9+原生API，异常则降级为系统属性解析
         try {
-            Class<?> runtimeClass = Runtime.class;
-            java.lang.reflect.Method versionMethod = runtimeClass.getMethod("version");
-            Object versionObj = versionMethod.invoke(null);
+            final Object versionObj = ReflectUtil.invokeStaticMethod(Runtime.class, "version");
             // 调用Version.major()获取主版本号
-            java.lang.reflect.Method majorMethod = versionObj.getClass().getMethod("major");
-            JDK_MAIN_VERSION = (Integer) majorMethod.invoke(versionObj);
+            JDK_MAIN_VERSION = ReflectUtil.invokeMethod(versionObj, "major");
         } catch (Exception e) {
             // 降级为java.version系统属性解析（Java8及以下）
             String jdkVersion = System.getProperty("java.version");

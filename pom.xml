@@ -23,7 +23,7 @@
 
         <!-- versions -->
         <jdk.version>1.8</jdk.version>
-        <jdk-test.version>1.8</jdk-test.version>
+        <jdk-test.version>${jdk.version}</jdk-test.version>
         <maven.compiler.source>${jdk.version}</maven.compiler.source>
         <maven.compiler.target>${jdk.version}</maven.compiler.target>
         <maven.compiler.testSource>${jdk-test.version}</maven.compiler.testSource>
@@ -90,15 +90,6 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
-        <!-- 动态引入tools.jar，无硬编码路径 -->
-        <dependency>
-            <groupId>com.sun</groupId>
-            <artifactId>tools</artifactId>
-            <version>${java.version}</version> <!-- 复用项目JDK版本，无需手动写1.8.0_201 -->
-            <scope>system</scope>
-            <!-- 动态路径：从JRE目录回溯到JDK根目录，拼接tools.jar -->
-            <systemPath>${java.home}/../lib/tools.jar</systemPath>
-        </dependency>
         <!-- lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -143,6 +134,7 @@
                 <executions>
                     <execution>
                         <id>compile</id>
+                        <phase>process-sources</phase>
                         <goals>
                             <goal>compile</goal>
                         </goals>
@@ -228,12 +220,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <!-- 核心：指定源码编码和输出编码为 UTF-8 -->
-                    <encoding>UTF-8</encoding>
-                    <charset>UTF-8</charset>
-                    <docencoding>UTF-8</docencoding>
-                    <source>${compile.version}</source>
-                    <release>${compile.version}</release>
+                    <failOnWarnings>false</failOnWarnings>
                     <failOnError>false</failOnError>
                 </configuration>
             </plugin>
