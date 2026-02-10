@@ -10,11 +10,11 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.Collections;
 
 /**
  * CompilerUtilTest 是一个测试类，用于验证 {@link CompilerUtil} 类的功能。
@@ -25,7 +25,6 @@ import java.nio.file.Files;
  */
 @Tag("jdk8")
 class CompilerUtilTest {
-
 
     /**
      * 测试编译 Java 源代码并验证其执行结果。
@@ -54,11 +53,10 @@ class CompilerUtilTest {
      * - 编译完成后，通过生成的类加载器加载编译后的类。
      * - 反射调用加载类中的静态方法，确保跨类的方法调用能够正确执行且输出预期结果。
      *
-     * @throws Exception 如果在编译、类加载或方法调用过程中发生异常
      */
     @Test
     @DisplayName("测试编译多个类")
-    void testCompileMultiCode() throws Exception {
+    void testCompileMultiCode() throws ClassNotFoundException {
         final String className = "test.HelloWorld";
         final Resource helloWorldResource = new ClassPathResource("test-compile/test-compile-multi-code/HelloWorld.java");
         final Resource demoResource = new ClassPathResource("test-compile/test-compile-multi-code/Demo.java");
@@ -79,11 +77,10 @@ class CompilerUtilTest {
      * - 编译完成后，通过生成的类加载器加载编译后的类。
      * - 反射调用加载类中的静态方法，确保方法能够正确执行且输出预期结果。
      *
-     * @throws Exception 如果在编译、类加载或方法调用过程中发生异常
      */
     @Test
     @DisplayName("测试编译包含依赖")
-    void testCompileWithDependency() throws Exception {
+    void testCompileWithDependency() throws ClassNotFoundException {
         final Resource resource = new ClassPathResource("test-compile/test-compile-with-dependency/HelloWorld.java");
         final String className = "test.HelloWorld";
         final ClassLoader classLoader = CompilerUtil.create()
@@ -103,11 +100,10 @@ class CompilerUtilTest {
      * - 编译完成后，通过生成的类加载器加载编译后的类。
      * - 反射调用加载类中的静态方法，确保 Lombok 注解能够被正确处理且输出预期结果。
      *
-     * @throws Exception 如果在编译、类加载或方法调用过程中发生异常
      */
     @Test
     @DisplayName("测试编译包含Lombok")
-    void testCompileWithLombok() throws Exception {
+    void testCompileWithLombok() throws ClassNotFoundException {
         final Resource resource = new ClassPathResource("test-compile/test-compile-with-lombok/HelloWorld.java");
         final String className = "test.HelloWorld";
         final ClassLoader classLoader = CompilerUtil.create()
@@ -155,11 +151,10 @@ class CompilerUtilTest {
      * - 通过类加载器加载 TestLombok 类，调用其 create 方法创建对象。
      * - 验证创建的对象字符串表示以 "TestLombok(" 开头，确保编译与实例化正确无误。
      *
-     * @throws Exception 如果在编译或类加载过程中出现任何异常
      */
     @Test
     @DisplayName("测试编译文件")
-    void testCompileFile() throws Exception {
+    void testCompileFile() throws ClassNotFoundException {
         final ClassLoader classLoader = CompilerUtil.compile(new ClassPathResource("test-compile/test-compile-file/A.java").getFile());
         final Object obj = ReflectUtil.newInstance(classLoader, "A");
         System.out.println("obj = " + obj);
@@ -176,11 +171,10 @@ class CompilerUtilTest {
      * - 通过类加载器加载 TestLombok 类，调用其 create 方法创建对象。
      * - 验证创建的对象字符串表示以 "TestLombok(" 开头，确保编译与实例化正确无误。
      *
-     * @throws Exception 如果在编译或类加载过程中出现任何异常
      */
     @Test
     @DisplayName("测试编译文件夹")
-    void testCompileDirectory() throws Exception {
+    void testCompileDirectory() throws ClassNotFoundException {
         final ClassLoader classLoader = CompilerUtil.compile(new ClassPathResource("test-compile/test-compile-directory").getFile());
         final Object obj = ReflectUtil.newInstance(classLoader, "C");
         System.out.println("obj = " + obj);
@@ -220,11 +214,10 @@ class CompilerUtilTest {
      * - 编译完成后，通过生成的类加载器加载编译后的类。
      * - 反射调用加载类中的静态方法，确保方法能够正确执行且输出预期结果。
      *
-     * @throws Exception 如果在编译、类加载或方法调用过程中发生异常
      */
     @Test
     @DisplayName("测试编译使用当前环境信息")
-    void testCompileWithCurrentEnv() throws Exception {
+    void testCompileWithCurrentEnv() throws ClassNotFoundException {
         final Resource resource = new ClassPathResource("test-compile/test-compile-with-current-env/HelloWorld.java");
         final String className = "test.HelloWorld";
         final ClassLoader classLoader = CompilerUtil.create()
@@ -247,17 +240,19 @@ class CompilerUtilTest {
     @Test
     @DisplayName("测试编译指定注解处理器")
     void testCompileWithProcessor() throws Exception {
-        final Resource resource = new ClassPathResource("test-compile/test-compile-with-processor/HelloWorld.java");
-        final String className = "test.HelloWorld";
-        final File compileSources = new File("target/compile-sources");
-        Files.createDirectories(compileSources.toPath());
-        final ClassLoader classLoader = CompilerUtil.create()
-                .addSource(resource.getName(), resource.readUtf8Str())
-                .addProcessor(new AuditProcessor())
-                .setSourceOutput(compileSources)
-                .compile();
-        final Class<?> clazz = ReflectUtil.loadClass(classLoader, className);
-        ReflectUtil.invokeStaticMethod(clazz, "hello");
+        {
+            final Resource resource = new ClassPathResource("test-compile/test-compile-with-processor/HelloWorld.java");
+            final String className = "test.HelloWorld";
+            final File compileSources = new File("target/compile-sources");
+            Files.createDirectories(compileSources.toPath());
+            final ClassLoader classLoader = CompilerUtil.create()
+                    .addSource(resource.getName(), resource.readUtf8Str())
+                    .addProcessor(new AuditProcessor())
+                    .setSourceOutput(compileSources)
+                    .compile();
+            final Class<?> clazz = ReflectUtil.loadClass(classLoader, className);
+            ReflectUtil.invokeStaticMethod(clazz, "hello");
+        }
     }
 
     /**
@@ -288,7 +283,7 @@ class CompilerUtilTest {
 
     /**
      * 测试执行代码
-     * 该方法用于验证通过 {@link CompilerUtil#executeCode(String)} 方法执行的简单代码块的结果。
+     * 该方法用于验证通过 {@link CompilerUtil#executeCode(String, Object...)} 方法执行的简单代码块的结果。
      * 它将打印四个不同算术表达式的计算结果，以确保编译和执行过程按预期工作。
      *
      * @throws Exception 如果在执行代码过程中发生异常
@@ -297,9 +292,8 @@ class CompilerUtilTest {
     @DisplayName("测试执行代码")
     void testExecuteCode() throws Exception {
         System.out.println("1 + 1 = " + CompilerUtil.executeCode("return 1+1;"));
-        System.out.println("1 + 2 = " + CompilerUtil.executeCode("return 1+2;"));
-        System.out.println("1 + 3 = " + CompilerUtil.executeCode("return 1+3;"));
-        System.out.println("1 + 4 = " + CompilerUtil.executeCode("return 1+4;"));
+        System.out.println("Arrays.asList(1,2,3,4,5) = " + CompilerUtil.executeCode("return Arrays.asList(1,2,3,4,5);", Collections.singletonList(Arrays.class)));
+        System.out.println("Arrays.asList('p','a','c','k','a','g','e') = " + CompilerUtil.executeCode("return Arrays.asList('p','a','c','k','a','g','e');", Collections.singletonList(Arrays.class.getPackage())));
     }
 
 

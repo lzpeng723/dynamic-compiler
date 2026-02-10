@@ -6,6 +6,9 @@ import io.github.lzpeng.compiler.resource.FileResource;
 import io.github.lzpeng.compiler.resource.PathResource;
 import io.github.lzpeng.compiler.resource.Resource;
 import io.github.lzpeng.compiler.resource.StringResource;
+import io.github.lzpeng.compiler.util.JarFileUtil;
+import io.github.lzpeng.compiler.util.JdkVersionUtil;
+import io.github.lzpeng.compiler.util.ReflectUtil;
 import io.github.lzpeng.compiler.util.UrlUtil;
 
 import javax.annotation.processing.Processor;
@@ -13,6 +16,8 @@ import javax.tools.*;
 import javax.tools.JavaCompiler.CompilationTask;
 import java.io.File;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
@@ -28,6 +33,12 @@ import java.util.stream.StreamSupport;
  * @author lzpeng
  */
 public final class JavaSourceCompiler {
+
+
+    /**
+     * 运行时信息，用于获取进程信息
+     */
+    private static final RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
 
     /**
      * 系统默认的Java编译器实例。通过ToolProvider.getSystemJavaCompiler()方法获取，用于执行Java源代码的编译任务。
@@ -77,15 +88,24 @@ public final class JavaSourceCompiler {
     private final ClassLoader parentClassLoader;
 
     /**
+     * 是否有 httpUrl
+     */
+    private boolean hasHttpUrl;
+
+    /**
      * 构造
      *
      * @param parent 父类加载器，null则使用默认类加载器
      */
     private JavaSourceCompiler(ClassLoader parent) {
-        this.parentClassLoader = Optional.ofNullable(parent).orElseGet(Thread.currentThread()::getContextClassLoader);
-        if (Objects.isNull(this.systemCompiler)) {
-            throw new IllegalStateException("当前环境为JRE，无javac编译器，请切换到JDK运行");
+        try {
+            this.standardFileManager.setLocation(StandardLocation.CLASS_PATH, new ArrayList<>());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
+        this.parentClassLoader = Optional.ofNullable(parent).orElseGet(Thread.currentThread()::getContextClassLoader);
+        this.addDependencyPath(this.parentClassLoader);
+        this.withClassPath();
     }
 
     /**
@@ -132,6 +152,22 @@ public final class JavaSourceCompiler {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * 配置Java源码编译器的类路径依赖。
+     * 该方法会从运行时环境获取类路径，并将其解析为文件路径添加到依赖中。
+     * 同时，还会加载当前类加载器中的所有资源路径作为依赖。
+     *
+     * @return 返回当前JavaSourceCompiler实例，支持链式调用。
+     * @throws RuntimeException 如果在加载资源路径时发生IO异常，则抛出运行时异常。
+     */
+    public JavaSourceCompiler withClassPath() {
+        // 获取运行时类路径字符串并按分隔符拆分为多个路径
+        final String classPathStr = runtimeMXBean.getClassPath();
+        final String[] classPathStrs = classPathStr.split(File.pathSeparator);
+        Arrays.stream(classPathStrs).map(File::new).forEach(this::addDependencyPath);
+        return this;
     }
 
     /**
@@ -389,8 +425,13 @@ public final class JavaSourceCompiler {
      */
     public JavaSourceCompiler addLocationUrl(JavaFileManager.Location location, URL... urls) {
         if (urls != null && urls.length > 0) {
-            final Collection<URL> locationUrlColl = this.locationMap.computeIfAbsent(location, __ -> new ArrayList<>());
-            locationUrlColl.addAll(Arrays.asList(urls));
+            final Collection<URL> locationUrlColl = this.locationMap.computeIfAbsent(location, __ -> new LinkedHashSet<>());
+            for (URL url : urls) {
+                if (url.getProtocol().startsWith("http")) {
+                    this.hasHttpUrl = true;
+                }
+                locationUrlColl.add(url);
+            }
         }
         return this;
     }
@@ -472,7 +513,7 @@ public final class JavaSourceCompiler {
      * @return 类加载器
      */
     public ClassLoader compile() {
-        return compile(null);
+        return this.compile(null);
     }
 
     /**
@@ -490,23 +531,13 @@ public final class JavaSourceCompiler {
         final Collection<URL> classPathColl = this.locationMap.getOrDefault(StandardLocation.CLASS_PATH, Collections.emptySet());
         final ClassLoader classLoader = classPathColl.isEmpty() ? this.parentClassLoader : URLClassLoader.newInstance(classPathColl.toArray(new URL[0]), this.parentClassLoader);
         // 创建编译器
-        try (final JavaClassFileManager javaFileManager = new JavaClassFileManager(classLoader, this.standardFileManager, false)) {
-            // classpath
-            if (null == options) {
-                options = new ArrayList<>();
+        try (final JavaClassFileManager javaFileManager = new JavaClassFileManager(classLoader, this.standardFileManager, this.hasHttpUrl)) {
+            // 初始化编译参数
+            if (options == null) {
+                options = Collections.emptySet();
             }
-            // 设置编译时候用到的路径
-            this.locationMap.forEach((location, urls) -> {
-                try {
-                    if (urls != null) {
-                        this.standardFileManager.setLocation(location, urls.stream().map(UrlUtil::toFile).collect(Collectors.toList()));
-                    } else {
-                        this.standardFileManager.setLocation(location, null);
-                    }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
+            // 设置 Location
+            this.setLocation();
             // 编译文件
             final DiagnosticCollector<? super JavaFileObject> diagnosticCollector = new DiagnosticCollector<>();
             final List<JavaFileObject> javaFileObjectList = this.getJavaFileObjectList();
@@ -518,11 +549,81 @@ public final class JavaSourceCompiler {
                 // 加载编译后的类
                 return javaFileManager.getClassLoader(StandardLocation.CLASS_OUTPUT);
             }
+            if (JdkVersionUtil.isJdkMinus(8)) {
+                final List<Diagnostic<? extends JavaFileObject>> diagnosticList = ReflectUtil.getFieldValue(diagnosticCollector, "diagnostics");
+                final Map<File, Object> archiveMap = ReflectUtil.getFieldValue(this.standardFileManager, "archives");
+                archiveMap.forEach((file, archive) -> {
+                    if (file.isFile()) {
+                        if (archive.getClass().getName().equals("com.sun.tools.javac.file.JavacFileManager$MissingArchive")) {
+                            diagnosticList.add(0, new UrlCacheDiagnostic<>(file, archive));
+                        }
+                    }
+                });
+            }
             //编译失败,收集错误信息
             throw new CompilerException(this.getMessages(diagnosticCollector));
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new CompilerException(e.getMessage(), e);
         }
+    }
+
+
+    /**
+     * 设置编译时所需的类路径和其他资源定位信息。
+     * 该方法遍历locationMap中的每个location，将其对应的文件路径设置到standardFileManager中。
+     * 如果某个location对应的urls为null，则将其路径设置为null。
+     * 在处理过程中，如果发生IO异常，则抛出运行时异常。
+     */
+    private void setLocation() {
+        // 遍历locationMap，为每个location设置对应的文件路径
+        // 这些路径用于编译时的类路径和其他资源定位
+        this.locationMap.forEach((location, urls) -> {
+            try {
+                if (urls != null) {
+                    // 将URL转换为文件，并通过JarFileUtil处理后设置到standardFileManager中
+                    this.standardFileManager.setLocation(location, urls.stream().map(UrlUtil::toFile).map(JarFileUtil::list).flatMap(Collection::stream).collect(Collectors.toSet()));
+                    //this.standardFileManager.setLocation(location, urls.stream().map(UrlUtil::toFile).collect(Collectors.toSet()));
+                } else {
+                    // 如果urls为null，则将该location的路径设置为null
+                    this.standardFileManager.setLocation(location, null);
+                }
+            } catch (IOException e) {
+                // 捕获IO异常并抛出运行时异常
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+
+    /**
+     * 递归遍历给定的类加载器及其父类加载器，收集所有URLClassLoader中的依赖路径。
+     *
+     * @param classLoader 要处理的类加载器实例。如果为null，则直接返回。
+     *                    该方法会递归处理其父类加载器，直到根类加载器为止。
+     */
+    private void addDependencyPath(ClassLoader classLoader) {
+        // 如果传入的类加载器为null，直接返回，无需处理
+        if (classLoader == null) {
+            return;
+        }
+        // 加载当前类加载器中的所有资源路径并添加为依赖
+        try {
+            final Enumeration<URL> enumeration = classLoader.getResources("");
+            while (enumeration.hasMoreElements()) {
+                final URL url = enumeration.nextElement();
+                this.addDependencyPath(url);
+            }
+        } catch (IOException ignore) {
+        }
+        // 循环遍历当前类加载器及其所有父类加载器
+        do {
+            // 如果当前类加载器是URLClassLoader类型，则获取其URL路径并添加到依赖路径中
+            if (classLoader instanceof URLClassLoader) {
+                this.addDependencyPath(((URLClassLoader) classLoader).getURLs());
+            }
+            // 获取当前类加载器的父类加载器，继续向上遍历
+            classLoader = classLoader.getParent();
+        } while (classLoader != null); // 当父类加载器为null时结束循环
     }
 
     /**
@@ -562,6 +663,147 @@ public final class JavaSourceCompiler {
         return diagnostics.stream()
                 .map(String::valueOf)
                 .collect(Collectors.joining(System.lineSeparator()));
+    }
+
+    /**
+     * UrlCacheDiagnostic 是一个用于诊断URL缓存相关问题的内部类。
+     * 它实现了 Diagnostic 接口，提供了关于文件、归档对象和URL的信息，
+     * 并在加载URL失败时生成相应的错误消息。
+     * jdk8中 com.sun.tools.javac.file.JavacFileManager.openArchive(java.io.File, boolean) 会报错
+     *
+     * @param <S> 泛型参数，表示诊断信息的源类型（在此实现中未使用）。
+     */
+    private static class UrlCacheDiagnostic<S> implements Diagnostic<S> {
+
+        /**
+         * 文件对象，表示与URL关联的本地文件
+         */
+        private final File file;
+
+        /**
+         * 归档对象，可能一个压缩包或其他资源容器
+         */
+        private final Object archive;
+
+        /**
+         * URL对象，通过文件缓存获取的URL
+         */
+        private final URL url;
+
+        /**
+         * 构造函数，初始化UrlCacheDiagnostic实例。
+         *
+         * @param file    与URL关联的本地文件
+         * @param archive 可能是压缩包或其他资源容器的对象
+         */
+        private UrlCacheDiagnostic(File file, Object archive) {
+            this.file = file;
+            this.archive = archive;
+            this.url = UrlUtil.getUrlFromFileCache(file);
+        }
+
+        /**
+         * 返回诊断的种类。此处固定返回 Kind.OTHER。
+         *
+         * @return 诊断种类，固定为 Kind.OTHER
+         */
+        @Override
+        public Kind getKind() {
+            return Kind.OTHER;
+        }
+
+        /**
+         * 返回诊断信息的源。在此实现中始终返回 null。
+         *
+         * @return 诊断信息的源，固定为 null
+         */
+        @Override
+        public S getSource() {
+            return null;
+        }
+
+        /**
+         * 返回诊断信息的位置。在此实现中始终返回 0。
+         *
+         * @return 位置信息，固定为 0
+         */
+        @Override
+        public long getPosition() {
+            return 0;
+        }
+
+        /**
+         * 返回诊断信息的起始位置。在此实现中始终返回 0。
+         *
+         * @return 起始位置信息，固定为 0
+         */
+        @Override
+        public long getStartPosition() {
+            return 0;
+        }
+
+        /**
+         * 返回诊断信息的结束位置。在此实现中始终返回 0。
+         *
+         * @return 结束位置信息，固定为 0
+         */
+        @Override
+        public long getEndPosition() {
+            return 0;
+        }
+
+        /**
+         * 返回诊断信息所在的行号。在此实现中始终返回 0。
+         *
+         * @return 行号信息，固定为 0
+         */
+        @Override
+        public long getLineNumber() {
+            return 0;
+        }
+
+        /**
+         * 返回诊断信息所在的列号。在此实现中始终返回 0。
+         *
+         * @return 列号信息，固定为 0
+         */
+        @Override
+        public long getColumnNumber() {
+            return 0;
+        }
+
+        /**
+         * 返回诊断信息的代码标识。在此实现中始终返回空字符串。
+         *
+         * @return 代码标识，固定为空字符串
+         */
+        @Override
+        public String getCode() {
+            return "";
+        }
+
+        /**
+         * 返回诊断信息的消息内容。
+         * 消息包括URL加载失败的错误提示以及相关的归档信息。
+         *
+         * @param locale 本地化语言环境
+         * @return 格式化的错误消息字符串
+         */
+        @Override
+        public String getMessage(Locale locale) {
+            return System.lineSeparator() + "错误: 加载url失败   " + url + System.lineSeparator() + "   -->   " + archive + System.lineSeparator();
+        }
+
+        /**
+         * 返回诊断信息的字符串表示形式。
+         * 默认使用系统默认的语言环境生成消息。
+         *
+         * @return 诊断信息的字符串表示
+         */
+        @Override
+        public String toString() {
+            return this.getMessage(Locale.getDefault());
+        }
     }
 
 }

@@ -1,24 +1,15 @@
 package io.github.lzpeng.compiler.file;
 
-import io.github.lzpeng.compiler.CharPool;
 import io.github.lzpeng.compiler.classloader.ResourceClassLoader;
 import io.github.lzpeng.compiler.resource.FileObjectResource;
 import io.github.lzpeng.compiler.resource.Resource;
-import io.github.lzpeng.compiler.util.JdkVersionUtil;
-import io.github.lzpeng.compiler.util.ReflectUtil;
-import io.github.lzpeng.compiler.util.UrlUtil;
 
 import javax.tools.*;
 import javax.tools.JavaFileObject.Kind;
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.jar.JarFile;
 
 /**
  * Java 字节码文件对象管理器
@@ -44,29 +35,26 @@ public final class JavaClassFileManager extends ForwardingJavaFileManager<JavaFi
     private final Map<String, Resource> classFileObjectMap = new HashMap<>();
 
     /**
+     *
+     */
+    private final Set<String> loadedPackageNameSet = new HashSet<>();
+
+    /**
      * 加载动态编译生成类的父类加载器
      */
     private final ClassLoader parentClassLoader;
 
-
-    private final boolean contextUseOptimizedZip;
 
     /**
      * 构造
      *
      * @param parentClassLoader 父类加载器
      * @param fileManager       字节码文件管理器
+     * @param hasHttpUrl        是否有http的url
      */
-    public JavaClassFileManager(ClassLoader parentClassLoader, JavaFileManager fileManager, boolean contextUseOptimizedZip) {
+    public JavaClassFileManager(ClassLoader parentClassLoader, JavaFileManager fileManager, boolean hasHttpUrl) {
         super(fileManager);
         this.parentClassLoader = Optional.ofNullable(parentClassLoader).orElseGet(Thread.currentThread()::getContextClassLoader);
-        this.contextUseOptimizedZip = contextUseOptimizedZip;
-        if (JdkVersionUtil.isJdk8() && this.fileManager instanceof StandardJavaFileManager) {
-            final Object standardContextUseOptimizedZip = ReflectUtil.getFieldValue(this.fileManager, "contextUseOptimizedZip");
-            if (Boolean.parseBoolean(String.valueOf(standardContextUseOptimizedZip)) != this.contextUseOptimizedZip) {
-                ReflectUtil.setFieldValue(this.fileManager, "contextUseOptimizedZip", this.contextUseOptimizedZip);
-            }
-        }
     }
 
     /**
@@ -123,8 +111,9 @@ public final class JavaClassFileManager extends ForwardingJavaFileManager<JavaFi
      * @throws IOException 如果发生I/O错误
      */
     @Override
-    public Iterable<JavaFileObject> list(Location location, String packageName, Set<Kind> kinds, boolean recurse) throws IOException { // 先获取默认的类列表（本地文件系统）
-        if (this.fileManager instanceof StandardJavaFileManager && StandardLocation.CLASS_PATH.equals(location)) {
+    public Iterable<JavaFileObject> list(Location location, String packageName, Set<Kind> kinds, boolean recurse) throws IOException {
+/*
+        if (this.fileManager instanceof StandardJavaFileManager && StandardLocation.CLASS_PATH.equals(location) && !this.loadedPackageNameSet.contains(packageName)) {
             final Set<File> classPathSet = new HashSet<>();
             final StandardJavaFileManager standardJavaFileManager = (StandardJavaFileManager) this.fileManager;
             final Iterable<? extends File> fileLocationIter = standardJavaFileManager.getLocation(location);
@@ -133,65 +122,15 @@ public final class JavaClassFileManager extends ForwardingJavaFileManager<JavaFi
             final Enumeration<URL> enumeration = this.parentClassLoader.getResources(packageRes);
             while (enumeration.hasMoreElements()) {
                 // 获取文件
-                final File tempJarFile = this.getTempJarFile(enumeration);
-                classPathSet.add(tempJarFile);
+                final URL url = enumeration.nextElement();
+                final File file = UrlUtil.toFile(url);
+                classPathSet.add(file);
             }
             standardJavaFileManager.setLocation(location, classPathSet);
+            this.loadedPackageNameSet.add(packageName);
         }
+ */
         return super.list(location, packageName, kinds, recurse);
-    }
-
-    /**
-     * 获取临时的JAR文件。
-     *
-     * @param enumeration URL枚举，用于获取URL
-     * @return 与给定URL对应的临时JAR文件
-     * @throws IOException 如果在处理过程中发生I/O错误
-     */
-    private File getTempJarFile(Enumeration<URL> enumeration) throws IOException {
-        final URL url = enumeration.nextElement();
-        final File file = UrlUtil.toFile(url);
-        if (JdkVersionUtil.isJdk9Plus()) {
-            return file;
-        }
-        if (!this.contextUseOptimizedZip) {
-            return file;
-        }
-        if (!file.getName().endsWith(".tmp")) {
-            return file;
-        }
-        // jdk8的UrlClassLoader会有文件不释放的内存泄漏，17正常
-        // jdk8中 com.sun.tools.javac.file.JavacFileManager.openArchive(java.io.File, boolean) 会报错
-        return JavaClassFileManager.fileCacheMap.computeIfAbsent(file.getAbsolutePath(), __ -> {
-            try {
-                final File tempJarFile = Files.createTempFile("dynamic-compiler", ".jar").toFile();
-                Files.copy(file.toPath(), tempJarFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                tempJarFile.deleteOnExit();
-                return tempJarFile;
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
-    }
-
-    /**
-     * 关闭URL类加载器中使用的Jar文件。
-     * 如果父类加载器是URLClassLoader的实例，则通过反射访问其内部字段，关闭所有相关的Jar文件。
-     *
-     * @throws IOException 如果在关闭Jar文件时发生I/O错误
-     */
-    private void closeUrlClassLoader() throws IOException {
-        if (this.parentClassLoader instanceof URLClassLoader) {
-            // ((URLClassLoader) this.parentClassLoader).close();
-            final Object ucp = ReflectUtil.getFieldValue(this.parentClassLoader, "ucp");
-            final List<?> loaders = ReflectUtil.getFieldValue(ucp, "loaders");
-            if (loaders != null) {
-                for (Object loader : loaders) {
-                    final JarFile jarFile = ReflectUtil.invokeMethod(loader, "getJarFile");
-                    jarFile.close();
-                }
-            }
-        }
     }
 
 }

@@ -1,12 +1,17 @@
 package io.github.lzpeng.compiler.util;
 
-import java.net.URLClassLoader;
-
 /**
  * JDK版本判断工具类（兼容Java8+，适配动态编译、类加载器隔离等所有场景）
+ *
+ * @author lzpeng
+ * @since 1.0.0-M5
  */
 public class JdkVersionUtil {
-    // 缓存JDK主版本号，避免重复解析
+
+
+    /**
+     * 缓存JDK版本号，避免重复解析
+     */
     private static Integer JDK_MAIN_VERSION = null;
 
     /**
@@ -36,51 +41,34 @@ public class JdkVersionUtil {
     }
 
     /**
-     * 判断是否为Java8环境
+     * 判断当前JDK主版本号是否等于指定版本。
+     *
+     * @param version 指定的JDK版本号
+     * @return 如果当前JDK主版本号等于指定版本，返回true；否则返回false
      */
-    public static boolean isJdk8() {
-        return getJdkMainVersion() == 8;
+    public static boolean isJdk(int version) {
+        return getJdkMainVersion() == version;
     }
 
     /**
-     * 判断是否为Java9+环境（无tools.jar、支持模块化）
+     * 判断当前JDK主版本号是否大于或等于指定版本。
+     *
+     * @param version 指定的JDK版本号
+     * @return 如果当前JDK主版本号大于或等于指定版本，返回true；否则返回false
      */
-    public static boolean isJdk9Plus() {
-        return getJdkMainVersion() >= 9;
+    public static boolean isJdkPlus(int version) {
+        return getJdkMainVersion() >= version;
     }
 
     /**
-     * 判断是否为Java11+长期支持版本
+     * 判断当前JDK主版本号是否小于或等于指定版本。
+     *
+     * @param version 指定的JDK版本号
+     * @return 如果当前JDK主版本号小于或等于指定版本，返回true；否则返回false
      */
-    public static boolean isJdk11Plus() {
-        return getJdkMainVersion() >= 11;
+    public static boolean isJdkMinus(int version) {
+        return getJdkMainVersion() <= version;
     }
 
-    /**
-     * 判断URLClassLoader是否有内置close()方法（Java9+有，Java8无）
-     */
-    public static boolean isURLClassLoaderSupportClose() {
-        try {
-            URLClassLoader.class.getMethod("close");
-            return true;
-        } catch (NoSuchMethodException e) {
-            return false;
-        }
-    }
 
-    /**
-     * 判断是否需要加载tools.jar（仅Java8需要，Java9+无此文件）
-     */
-    public static boolean needLoadToolsJar() {
-        return isJdk8();
-    }
-
-    // 测试主方法
-    public static void main(String[] args) {
-        System.out.println("当前JDK主版本号：" + getJdkMainVersion());
-        System.out.println("是否为Java8：" + isJdk8());
-        System.out.println("是否为Java9+：" + isJdk9Plus());
-        System.out.println("是否需要加载tools.jar：" + needLoadToolsJar());
-        System.out.println("URLClassLoader是否支持close：" + isURLClassLoaderSupportClose());
-    }
 }

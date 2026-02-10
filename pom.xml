@@ -8,7 +8,7 @@
 
     <groupId>io.github.lzpeng723</groupId>
     <artifactId>dynamic-compiler</artifactId>
-    <version>1.0.0-M4</version>
+    <version>1.0.0-M5</version>
     <name>dynamic-compiler</name>
     <description>
         dynamic-compiler
@@ -30,37 +30,12 @@
         <maven.compiler.testTarget>${jdk-test.version}</maven.compiler.testTarget>
         <compiler.version>${jdk.version}</compiler.version>
 
-        <maven-toolchains-plugin.version>1.1</maven-toolchains-plugin.version>
         <maven-compiler-plugin.version>3.8.0</maven-compiler-plugin.version>
-
-        <!--<junit.version>6.0.0</junit.version>-->
         <junit.version>5.13.2</junit.version>
-        <lombok.version>1.18.42</lombok.version>
-        <kotlin-version>2.2.20</kotlin-version>
-        <bouncycastle.version>1.82</bouncycastle.version>
         <javapoet.version>1.13.0</javapoet.version>
-        <auto-service.version>1.1.1</auto-service.version>
-        <compile-testing.version>0.23.0</compile-testing.version>
     </properties>
 
     <dependencies>
-        <!-- 自动生成 Service API -->
-        <dependency>
-            <groupId>com.google.auto.service</groupId>
-            <artifactId>auto-service</artifactId>
-            <version>${auto-service.version}</version>
-            <scope>test</scope>
-            <optional>true</optional>
-        </dependency>
-        <!-- 编译测试  -->
-        <!-- https://github.com/google/compile-testing  -->
-        <dependency>
-            <groupId>com.google.testing.compile</groupId>
-            <artifactId>compile-testing</artifactId>
-            <version>${compile-testing.version}</version>
-            <scope>test</scope>
-            <optional>true</optional>
-        </dependency>
         <!-- 简化代码生成的工具 -->
         <dependency>
             <groupId>com.squareup</groupId>
@@ -69,13 +44,6 @@
             <scope>test</scope>
             <optional>true</optional>
         </dependency>
-        <!-- Kotlin适配，用于在测试中使用kotlin代码 -->
-        <dependency>
-            <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-reflect</artifactId>
-            <version>${kotlin-version}</version>
-            <scope>test</scope>
-        </dependency>
         <!-- 全局单元测试 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -83,19 +51,12 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
-        <!-- 全局单元测试 -->
+        <!-- 参数化单元测试 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
             <version>${junit.version}</version>
             <scope>test</scope>
-        </dependency>
-        <!-- lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>${lombok.version}</version>
-            <scope>compile</scope>
         </dependency>
     </dependencies>
 
@@ -126,37 +87,6 @@
 
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.jetbrains.kotlin</groupId>
-                <artifactId>kotlin-maven-plugin</artifactId>
-                <version>${kotlin-version}</version>
-                <extensions>true</extensions>
-                <executions>
-                    <execution>
-                        <id>compile</id>
-                        <phase>process-sources</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                        <configuration>
-                            <sourceDirs>
-                                <sourceDir>${project.basedir}/src/main/java</sourceDir>
-                            </sourceDirs>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>test-compile</id>
-                        <goals>
-                            <goal>test-compile</goal>
-                        </goals>
-                        <configuration>
-                            <sourceDirs>
-                                <sourceDir>${project.basedir}/src/test/java</sourceDir>
-                            </sourceDirs>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

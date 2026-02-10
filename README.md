@@ -35,14 +35,14 @@ JDK 1.8 及以上版本
 <dependency>
   <groupId>io.github.lzpeng723</groupId>
     <artifactId>dynamic-compiler</artifactId>
-    <version>1.0.0-M4</version>
+    <version>1.0.0-M5</version>
 </dependency>
 ```
 
 ## Gradle 依赖
 
 ```groovy
-implementation 'io.github.lzpeng723:dynamic-compiler:1.0.0-M4'
+implementation 'io.github.lzpeng723:dynamic-compiler:1.0.0-M5'
 ```
 
 # 一、编译 Java 源码（基础无依赖场景）

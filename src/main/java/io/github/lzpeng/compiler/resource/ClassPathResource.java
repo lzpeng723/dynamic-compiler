@@ -1,5 +1,7 @@
 package io.github.lzpeng.compiler.resource;
 
+import javax.tools.JavaFileObject;
+
 /**
  * ClassPathResource类扩展了URLResource类，专门用于从Java类路径中加载资源。
  * 它提供了构造函数来根据指定的路径或名称和路径创建资源实例，并使用默认或指定的类加载器来定位资源。
@@ -13,7 +15,7 @@ public class ClassPathResource extends URLResource {
      * @param path 资源的路径
      */
     public ClassPathResource(String path) {
-        this(path.substring(path.lastIndexOf("/") + 1, path.length() - 5), path);
+        this(path.substring(path.lastIndexOf("/") + 1, path.length() - JavaFileObject.Kind.SOURCE.extension.length()), path);
     }
 
 
